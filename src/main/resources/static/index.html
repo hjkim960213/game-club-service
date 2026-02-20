@@ -202,7 +202,7 @@
     }
 
     async function loadMatches() {
-        const res = await fetch(`https://${SERVER_URL}/matches?_t=` + new Date().getTime());
+        const res = await fetch(`https://${SERVER_URL}/matches?_t=${Date.now()}`);
         const matches = await res.json();
         const listDiv = document.getElementById('matchList');
         listDiv.innerHTML = '<h3>🏁 경기 결과 수정</h3>';
@@ -287,9 +287,30 @@
         location.href = "/";
     }
 
-    setInterval(() => { if (document.getElementById('main-content').style.display === 'block') loadLeaderboard(); }, 5000);
+    // index.html 최하단 부근
+    setInterval(() => {
+        if (document.getElementById('main-content').style.display === 'block') {
+            loadLeaderboard();
+
+        // 🚩 [추가] 관리자 도구가 보이는 상태라면 경기 결과 목록도 5초마다 자동 갱신
+            const adminTab = document.getElementById('admin-tab');
+            if (adminTab && adminTab.style.display === 'block') {
+                loadMatches();
+            }
+        }
+    }, 5000); // 5초마다 동기화
     window.onload = checkAuth;
     document.getElementById('chatInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMsg(); });
+
+    // 🚩 서버 잠듦 방지 (Keep-alive) 로직
+    setInterval(() => {
+        // 서버의 메인 주소나 헬스체크 API를 10분마다 호출합니다.
+        fetch(`https://${SERVER_URL}/api/me`)
+            .then(() => console.log("서버를 깨우는 중..."))
+            .catch(e => console.error("깨우기 실패", e));
+    }, 600000); // 600,000ms = 10분
+
+
 </script>
 </body>
 </html>
