@@ -202,6 +202,10 @@
     }
 
     async function loadMatches() {
+
+        if (document.activeElement && document.activeElement.closest('#matchList')) {
+            return;
+        }
         const res = await fetch(`https://${SERVER_URL}/matches?_t=${Date.now()}`);
         const matches = await res.json();
         const listDiv = document.getElementById('matchList');
