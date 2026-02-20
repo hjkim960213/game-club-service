@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>GAME CLUB | 내전 통합 포털</title>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { font-family: 'Pretendard', sans-serif; padding: 30px; background-color: #f0f2f5; color: #1a1a1b; margin: 0; }
+
+        /* 🚩 컨테이너 최대 너비를 늘려서 가로 배치를 시원하게 만듭니다 (1000px -> 1300px) */
+        .container { max-width: 1300px; margin: 0 auto; background: #ffffff; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+
+        .sidebar { position: fixed; right: 25px; top: 120px; display: flex; flex-direction: column; gap: 15px; z-index: 100; }
+        .link-btn { padding: 14px; border-radius: 12px; text-decoration: none; color: white; text-align: center; font-weight: 800; font-size: 13px; transition: 0.3s; width: 80px; }
+        .youtube { background: linear-gradient(45deg, #ff0000, #cc0000); }
+        .discord { background: linear-gradient(45deg, #5865F2, #4752c4); }
+
+        /* 🚩 핵심 레이아웃: 왼쪽(6.5)과 오른쪽(3.5) 비율로 화면을 나눕니다 */
+        .dashboard-grid { display: grid; grid-template-columns: 6.5fr 3.5fr; gap: 40px; margin-top: 20px; align-items: start; }
+
+        /* 화면이 좁아지면(모바일 등) 자동으로 세로로 배치되도록 반응형 처리 */
+        @media (max-width: 1000px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+
+        /* 상단 헤더 영역 스타일 */
+        .header-section { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #f0f2f5; padding-bottom: 20px; margin-bottom: 20px; }
+        .header-section h1 { margin: 0; }
+
+        .leaderboard-card { background: #fff; border-radius: 16px; overflow: hidden; border: 1px solid #eee; }
+        table { width: 100%; border-collapse: collapse; text-align: center; }
+        th { background-color: #1a1a1b; color: #fff; padding: 18px; }
+        td { padding: 20px; border-bottom: 1px solid #f0f0f0; }
+        .rank-1 { color: #ffbb00; font-weight: 900; background: rgba(255, 187, 0, 0.05); }
+        .pts-column { font-size: 20px; font-weight: 900; color: #007bff; }
+        .badge { padding: 6px 12px; border-radius: 30px; font-size: 12px; font-weight: bold; color: white; display: inline-block; min-width: 70px; }
+        .status-finished { background: #10b981; }
+        .status-scheduled { background: #94a3b8; }
+
+        /* 관리자 도구 스타일 */
+        .admin-only { display: none; margin-top: 40px; padding: 30px; background: #fff1f1; border: 2px dashed #ff4d4f; border-radius: 20px; }
+        button { padding: 10px 20px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .btn-main { background: #007bff; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        input { padding: 12px; border: 2px solid #eee; border-radius: 10px; margin-bottom: 10px; }
+
+        /* 🚩 채팅창 디자인을 오른쪽 영역에 맞게 키우고 다듬었습니다 */
+        .chat-container { background: #fdfdfd; border: 1px solid #eee; border-radius: 15px; padding: 20px; height: 100%; display: flex; flex-direction: column; }
+        #chat-window { flex: 1; min-height: 500px; max-height: 600px; overflow-y: scroll; margin-bottom: 15px; padding-right: 10px; }
+        #chat-window::-webkit-scrollbar { width: 8px; }
+        #chat-window::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <a href="https://www.youtube.com/@welcomevolta" target="_blank" class="link-btn youtube">유튜브</a>
+    <a href="https://discord.gg/cPeJNTEgWU" target="_blank" class="link-btn discord">디스코드</a>
+</div>
+
+<div class="container">
+    <div id="login-section">
+        <h1 style="text-align:center;">🎮 GAME CLUB PORTAL</h1>
+        <div style="text-align:center; margin-top:50px;">
+            <input type="text" id="nickInput" placeholder="닉네임 입력"><br>
+            <button class="btn-main" onclick="guestLogin()">게스트 입장</button>
+            <hr style="margin:30px 0">
+            <input type="text" id="adminId" placeholder="아이디"><br>
+            <input type="password" id="adminPw" placeholder="비밀번호"><br>
+            <button style="background:#333; color:white;" onclick="adminLogin()">운영진 로그인</button>
+        </div>
+    </div>
+
+    <div id="main-content" style="display:none;">
+        <div class="header-section">
+            <div>
+                <h1>🏆 리그 순위표 <small style="font-size:12px; color:#999;">(5초마다 자동 갱신)</small></h1>
+                <p id="userDisplay" style="font-weight:bold; color:#007bff; margin: 10px 0 0 0;"></p>
+            </div>
+            <button class="btn-danger" onclick="logout()">로그아웃</button>
+        </div>
+
+        <div class="dashboard-grid">
+
+            <div class="left-col">
+                <div class="leaderboard-card">
+                    <table>
+                        <thead>
+                        <tr><th>순위</th><th>팀 이름</th><th>승</th><th>무</th><th>패</th><th>승점</th></tr>
+                        </thead>
+                        <tbody id="leaderboardBody"></tbody>
+                    </table>
+                </div>
+
+                <div id="admin-tab" class="admin-only">
+                    <h2 style="color:#ef4444; margin-top:0;">🛠️ 운영진 관리 도구</h2>
+                    <div style="background: white; padding: 25px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #ddd;">
+                        <h4 style="margin-top:0">🚩 신규 팀 생성</h4>
+                        <div style="display: flex; gap:10px">
+                            <input type="text" id="newTeamName" placeholder="새 팀 이름" style="flex:1; margin:0">
+                            <button class="btn-main" onclick="createTeam()" style="width: 120px;">팀 만들기</button>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:10px; margin-bottom:20px;">
+                        <button class="btn-main" onclick="genSchedule()">📅 대진표 생성</button>
+                        <button class="btn-danger" onclick="resetAll()">⚠️ 데이터 완전 초기화</button>
+                    </div>
+                    <div id="matchList"></div>
+                </div>
+            </div>
+
+            <div class="right-col">
+                <div class="chat-container">
+                    <h3 style="margin-top: 0;">💬 실시간 채팅 <span style="font-size:12px; color:#ff4d4f;">● LIVE</span></h3>
+                    <div id="chat-window"></div>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="chatInput" style="flex:1; margin:0" placeholder="메시지를 입력하세요...">
+                        <button class="btn-main" onclick="sendMsg()">전송</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    let socket;
+    let myNickname = "";
+    let myColor = "";
+
+    // 🚩 [완벽 개선] 황금각(Golden Angle)을 이용하여 닉네임이 한 글자만 달라도 색상을 확 찢어버리는 공식
+    function getUniqueColor(nickname) {
+        let sum = 0;
+        for (let i = 0; i < nickname.length; i++) {
+            // 각 글자의 유니코드 값을 전부 더합니다.
+            sum += nickname.charCodeAt(i);
+        }
+
+        // 137.5는 자연계의 황금각입니다.
+        // 게스트1과 게스트2처럼 합계가 1 차이 나더라도, 색상환을 137.5도씩 확 돌려버려서 전혀 다른 색이 나옵니다.
+        const hue = (sum * 137.5) % 360;
+
+        // 배경이 흰색이므로 채도(75%)와 명도(45%)를 고정하여 가독성 좋고 예쁜 색으로만 뽑습니다.
+        return `hsl(${hue}, 75%, 45%)`;
+    }
+
+    async function loadLeaderboard() {
+        try {
+            const res = await fetch('/teams?_t=' + new Date().getTime());
+            const teams = await res.json();
+            const body = document.getElementById('leaderboardBody');
+            body.innerHTML = teams.map((t, i) => `
+                <tr class="${i < 3 ? 'rank-' + (i + 1) : ''}">
+                    <td>${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td>
+                    <td style="font-weight:bold">${t.teamName}</td>
+                    <td>${t.wins}</td><td>${t.draws}</td><td>${t.losses}</td>
+                    <td class="pts-column">${t.totalPoints}</td>
+                </tr>
+            `).join('');
+        } catch(e) { console.error("순위표 갱신 에러", e); }
+    }
+
+    async function loadMatches() {
+        const res = await fetch('/matches?_t=' + new Date().getTime());
+        const matches = await res.json();
+        const listDiv = document.getElementById('matchList');
+        listDiv.innerHTML = '<h3>🏁 경기 결과 수정</h3>';
+        matches.forEach(m => {
+            const div = document.createElement('div');
+            div.style.cssText = "padding:15px; background:#fff; margin-bottom:10px; border-radius:10px; border:1px solid #ddd; display:flex; align-items:center; gap:10px;";
+            div.innerHTML = `
+                <span class="badge ${m.status === 'FINISHED' ? 'status-finished' : 'status-scheduled'}">${m.status === 'FINISHED' ? '종료' : '예정'}</span>
+                <b style="flex:1">${m.homeTeamName} vs ${m.awayTeamName}</b>
+                <input type="number" id="h-${m.id}" value="${m.homeScore}" style="width:50px; margin:0; text-align:center;"> :
+                <input type="number" id="a-${m.id}" value="${m.awayScore}" style="width:50px; margin:0; text-align:center;">
+                <button onclick="updateResult('${m.id}')" style="background:#ffbb00; padding:8px 15px;">반영</button>
+            `;
+            listDiv.appendChild(div);
+        });
+    }
+
+    async function createTeam() {
+        const nameInput = document.getElementById('newTeamName');
+        const name = nameInput.value.trim();
+        if (!name) return alert("팀 이름을 입력하세요!");
+
+        try {
+            const res = await fetch(`/create-team?name=${encodeURIComponent(name)}`);
+            const msg = await res.text();
+
+            await loadLeaderboard();
+            nameInput.value = '';
+
+            setTimeout(() => { alert(msg); }, 50);
+
+        } catch (err) {
+            console.error("통신 에러", err);
+            alert("서버와 통신하는 중 문제가 발생했습니다.");
+        }
+    }
+
+    // 🚩 서버로 닉네임을 보내고, 실시간 명단을 받아 처리하도록 진화된 채팅 함수
+    function connectChat(nickname, role) {
+        myNickname = nickname;
+        myColor = (role === 'ADMIN') ? '#ff4d4f' : getUniqueColor(nickname);
+
+        // 1. 서버에 연결할 때 내 닉네임을 주소 뒤에 달아서 보냅니다.
+        socket = new WebSocket(`ws://${location.host}/ws/chat?nickname=${encodeURIComponent(nickname)}`);
+
+        socket.onmessage = (e) => {
+            // 2. 만약 서버가 보낸 메시지가 명단([USER_LIST])이라면?
+            if (e.data.startsWith("[USER_LIST]")) {
+                // 상단에 있던 '👋 희준님 접속 중' 글씨를 실시간 명단으로 덮어씁니다!
+                document.getElementById('userDisplay').innerText = e.data.replace("[USER_LIST]", "🟢 실시간 ");
+                return; // 채팅창에는 안 그리게 여기서 끝냅니다.
+            }
+
+            // 3. 일반 채팅 메시지라면 평소처럼 화면에 그립니다.
+            const win = document.getElementById('chat-window');
+            const div = document.createElement('div');
+            div.style.marginBottom = "10px";
+            div.innerHTML = e.data;
+            win.appendChild(div);
+            win.scrollTop = win.scrollHeight;
+        };
+    }
+
+    function sendMsg() {
+        const input = document.getElementById('chatInput');
+        if (!input.value || !socket) return;
+        const msg = `<strong style="color:${myColor}">${myNickname}</strong>: ${input.value}`;
+        socket.send(msg);
+        input.value = '';
+    }
+
+    async function updateResult(id) {
+        await fetch(`/update-result?matchId=${id}&homeScore=${document.getElementById(`h-${id}`).value}&awayScore=${document.getElementById(`a-${id}`).value}`);
+        await loadLeaderboard();
+
+        setTimeout(() => {
+            alert("결과 반영 완료!");
+        }, 50);
+    }
+
+    async function resetAll() {
+        if (!confirm("⚠️ 모든 데이터(팀, 경기)가 삭제됩니다. 계속할까요?")) return;
+        const res = await fetch('/reset-all');
+        const msg = await res.text();
+        alert(msg);
+        location.reload();
+    }
+
+    async function genSchedule() {
+        const res = await fetch('/generate-schedule');
+        const msg = await res.text();
+        alert(msg);
+        loadMatches();
+    }
+
+    async function checkAuth() {
+        const res = await fetch('/api/me');
+        if (res.ok) {
+            const user = await res.json();
+            if (user && user.nickname) {
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+                document.getElementById('userDisplay').innerText = `👋 ${user.nickname}님 접속 중`;
+                if (user.role === 'ADMIN') document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+
+                connectChat(user.nickname, user.role);
+
+                loadLeaderboard(); loadMatches();
+            }
+        }
+    }
+
+    async function guestLogin() {
+        const n = document.getElementById('nickInput').value;
+        await fetch(`/api/login/guest?nickname=${encodeURIComponent(n)}`, { method: 'POST' });
+        checkAuth();
+    }
+
+    async function adminLogin() {
+        const id = document.getElementById('adminId').value;
+        const pw = document.getElementById('adminPw').value;
+        const res = await fetch(`/api/login/admin?loginId=${id}&password=${pw}`, { method: 'POST' });
+        if (res.ok) checkAuth(); else alert("아이디/비번 틀림");
+    }
+
+    async function logout() {
+        await fetch('/api/logout', { method: 'POST' });
+        location.href = "/";
+    }
+
+    setInterval(() => {
+        if (document.getElementById('main-content').style.display === 'block') loadLeaderboard();
+    }, 5000);
+
+    window.onload = checkAuth;
+    document.getElementById('chatInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMsg(); });
+</script>
+</body>
+</html>
