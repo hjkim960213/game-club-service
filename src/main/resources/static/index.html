@@ -6,7 +6,6 @@
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
-        /* 🚩 테마별 색상 변수 설정 */
         :root {
             --bg-color: #f0f2f5;
             --card-bg: #ffffff;
@@ -38,10 +37,7 @@
         @media (max-width: 1000px) { .dashboard-grid { grid-template-columns: 1fr; } }
 
         .header-section { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--border-color); padding-bottom: 20px; margin-bottom: 20px; }
-
-        /* 🚩 테마 버튼 스타일 및 위치 */
         .theme-toggle { background: #666; color: white; padding: 8px 15px; border-radius: 20px; font-size: 12px; cursor: pointer; border: none; transition: 0.2s; }
-        .theme-toggle:hover { background: #444; }
         .login-theme-box { position: absolute; top: 20px; right: 20px; }
 
         .leaderboard-card { background: var(--card-bg); border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color); }
@@ -146,19 +142,16 @@
     let myNickname = "";
     let myColor = "";
 
-    // 🚩 [수정] LocalStorage에서 테마를 불러오거나 기본값 'light' 설정
-    let currentTheme = localStorage.getItem('theme') || 'light';
+    // 🚩 [주소 설정] Render 서버 주소 (https:// 제외)
+    const SERVER_URL = "game-club-service.onrender.com";
 
-    // 초기 테마 적용
+    let currentTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', currentTheme);
 
     function toggleTheme() {
         currentTheme = (currentTheme === 'light') ? 'dark' : 'light';
         document.documentElement.setAttribute('data-theme', currentTheme);
-
-        // 🚩 [추가] 선택한 테마를 브라우저에 저장
         localStorage.setItem('theme', currentTheme);
-
         if(myNickname) myColor = (myNickname === '운영진') ? '#ff4d4f' : getUniqueColor(myNickname);
     }
 
@@ -166,15 +159,35 @@
         let sum = 0;
         for (let i = 0; i < nickname.length; i++) sum += nickname.charCodeAt(i);
         const hue = (sum * 137.5) % 360;
-        // 다크모드일 때 가시성을 위해 명도를 더 밝게 조정
         const lightness = (currentTheme === 'dark') ? '65%' : '45%';
         return `hsl(${hue}, 80%, ${lightness})`;
     }
 
-    // --- 이하 로직 동일 ---
+    function connectChat(nickname, role) {
+        myNickname = nickname;
+        myColor = (role === 'ADMIN') ? '#ff4d4f' : getUniqueColor(nickname);
+
+        // 🚩 보안 웹소켓(wss) 연결
+        socket = new WebSocket(`wss://${SERVER_URL}/ws/chat?nickname=${encodeURIComponent(nickname)}`);
+
+        socket.onmessage = (e) => {
+            if (e.data.startsWith("[USER_LIST]")) {
+                document.getElementById('userDisplay').innerText = e.data.replace("[USER_LIST]", "🟢 실시간 ");
+                return;
+            }
+            const win = document.getElementById('chat-window');
+            const div = document.createElement('div');
+            div.style.marginBottom = "10px";
+            div.innerHTML = e.data;
+            win.appendChild(div);
+            win.scrollTop = win.scrollHeight;
+        };
+        socket.onclose = () => console.log("서버 연결 종료");
+    }
+
     async function loadLeaderboard() {
         try {
-            const res = await fetch('/teams?_t=' + new Date().getTime());
+            const res = await fetch(`https://${SERVER_URL}/teams?_t=` + new Date().getTime());
             const teams = await res.json();
             const body = document.getElementById('leaderboardBody');
             body.innerHTML = teams.map((t, i) => `
@@ -185,11 +198,11 @@
                     <td class="pts-column">${t.totalPoints}</td>
                 </tr>
             `).join('');
-        } catch(e) { console.error("순위표 갱신 에러", e); }
+        } catch(e) { console.error("에러", e); }
     }
 
     async function loadMatches() {
-        const res = await fetch('/matches?_t=' + new Date().getTime());
+        const res = await fetch(`https://${SERVER_URL}/matches?_t=` + new Date().getTime());
         const matches = await res.json();
         const listDiv = document.getElementById('matchList');
         listDiv.innerHTML = '<h3>🏁 경기 결과 수정</h3>';
@@ -211,27 +224,9 @@
         const nameInput = document.getElementById('newTeamName');
         const name = nameInput.value.trim();
         if (!name) return alert("팀 이름 입력!");
-        await fetch(`/create-team?name=${encodeURIComponent(name)}`);
+        await fetch(`https://${SERVER_URL}/create-team?name=${encodeURIComponent(name)}`);
         loadLeaderboard();
         nameInput.value = '';
-    }
-
-    function connectChat(nickname, role) {
-        myNickname = nickname;
-        myColor = (role === 'ADMIN') ? '#ff4d4f' : getUniqueColor(nickname);
-        socket = new WebSocket(`ws://${location.host}/ws/chat?nickname=${encodeURIComponent(nickname)}`);
-        socket.onmessage = (e) => {
-            if (e.data.startsWith("[USER_LIST]")) {
-                document.getElementById('userDisplay').innerText = e.data.replace("[USER_LIST]", "🟢 실시간 ");
-                return;
-            }
-            const win = document.getElementById('chat-window');
-            const div = document.createElement('div');
-            div.style.marginBottom = "10px";
-            div.innerHTML = e.data;
-            win.appendChild(div);
-            win.scrollTop = win.scrollHeight;
-        };
     }
 
     function sendMsg() {
@@ -243,25 +238,25 @@
     }
 
     async function updateResult(id) {
-        await fetch(`/update-result?matchId=${id}&homeScore=${document.getElementById(`h-${id}`).value}&awayScore=${document.getElementById(`a-${id}`).value}`);
+        await fetch(`https://${SERVER_URL}/update-result?matchId=${id}&homeScore=${document.getElementById(`h-${id}`).value}&awayScore=${document.getElementById(`a-${id}`).value}`);
         loadLeaderboard();
         setTimeout(() => alert("결과 반영 완료!"), 50);
     }
 
     async function resetAll() {
-        if (!confirm("⚠️ 모든 데이터 삭제?")) return;
-        await fetch('/reset-all');
+        if (!confirm("⚠️ 전체 초기화?")) return;
+        await fetch(`https://${SERVER_URL}/reset-all`);
         location.reload();
     }
 
     async function genSchedule() {
-        const res = await fetch('/generate-schedule');
+        const res = await fetch(`https://${SERVER_URL}/generate-schedule`);
         alert(await res.text());
         loadMatches();
     }
 
     async function checkAuth() {
-        const res = await fetch('/api/me');
+        const res = await fetch(`https://${SERVER_URL}/api/me`);
         if (res.ok) {
             const user = await res.json();
             if (user && user.nickname) {
@@ -276,19 +271,19 @@
 
     async function guestLogin() {
         const n = document.getElementById('nickInput').value;
-        await fetch(`/api/login/guest?nickname=${encodeURIComponent(n)}`, { method: 'POST' });
+        await fetch(`https://${SERVER_URL}/api/login/guest?nickname=${encodeURIComponent(n)}`, { method: 'POST' });
         checkAuth();
     }
 
     async function adminLogin() {
         const id = document.getElementById('adminId').value;
         const pw = document.getElementById('adminPw').value;
-        const res = await fetch(`/api/login/admin?loginId=${id}&password=${pw}`, { method: 'POST' });
+        const res = await fetch(`https://${SERVER_URL}/api/login/admin?loginId=${id}&password=${pw}`, { method: 'POST' });
         if (res.ok) checkAuth(); else alert("아이디/비번 틀림");
     }
 
     async function logout() {
-        await fetch('/api/logout', { method: 'POST' });
+        await fetch(`https://${SERVER_URL}/api/logout`, { method: 'POST' });
         location.href = "/";
     }
 
