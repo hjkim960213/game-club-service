@@ -48,12 +48,10 @@
 
         .header-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; }
 
-        /* 사이드바 링크 스타일 */
         .sidebar { position: fixed; right: 20px; top: 120px; display: flex; flex-direction: column; gap: 12px; z-index: 100; }
         .link-btn { padding: 12px; border-radius: 10px; text-decoration: none; color: white; text-align: center; font-weight: 800; font-size: 12px; width: 65px; transition: 0.2s; }
         .youtube { background: #ff0000; } .discord { background: #5865F2; } .kakao { background: #fee500; color: #3c1e1e !important; }
 
-        /* 순위표 테이블 디자인 */
         .leaderboard-card { background: var(--card-bg); border-radius: 16px; overflow-x: auto; border: 1px solid var(--border-color); }
         table { width: 100%; border-collapse: collapse; text-align: center; min-width: 500px; }
         th { background-color: var(--header-bg); color: #fff; padding: 15px; font-size: 14px; }
@@ -61,7 +59,6 @@
         .rank-1 { color: #ffbb00 !important; font-weight: 900; }
         .pts-column { font-size: 18px; font-weight: 900; color: #007bff; }
 
-        /* 채팅 UI 디자인 */
         .chat-container { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 15px; padding: 15px; display: flex; flex-direction: column; height: 550px; box-sizing: border-box; }
         #chat-window { flex: 1; overflow-y: auto; margin-bottom: 12px; padding-right: 5px; font-size: 14px; }
 
@@ -71,7 +68,6 @@
         .btn-danger { background: #ef4444; color: white; }
         .theme-toggle { background: #666; color: white; border-radius: 20px; font-size: 11px; }
 
-        /* 관리자 도구 섹션 */
         .admin-only { display: none; margin-top: 30px; padding: 20px; background: rgba(239, 68, 68, 0.05); border: 2px dashed #ff4d4f; border-radius: 20px; }
     </style>
 </head>
@@ -95,7 +91,7 @@
             <hr style="width:80%; max-width:300px; margin:20px 0; border:0; border-top:1px solid var(--border-color);">
             <input type="text" id="adminId" placeholder="관리자 ID" style="width:80%; max-width:300px;">
             <input type="password" id="adminPw" placeholder="비밀번호" style="width:80%; max-width:300px;">
-            <button style="background:#333; color:white; width:80%; max-width:300px;" onclick="adminLogin()">운영진 로그인</button>
+            <button style="background:#333; color:white; width:80%; max-width:320px;" onclick="adminLogin()">운영진 로그인</button>
         </div>
     </div>
 
@@ -152,9 +148,9 @@
     let socket;
     let myNickname = "";
     let myColor = "";
+    let myRole = ""; // 🚩 전역 변수로 역할 저장
     const SERVER_URL = "game-club-service.onrender.com";
 
-    // 테마 설정 로직 (브라우저 저장)
     let currentTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', currentTheme);
 
@@ -162,7 +158,7 @@
         currentTheme = (currentTheme === 'light') ? 'dark' : 'light';
         document.documentElement.setAttribute('data-theme', currentTheme);
         localStorage.setItem('theme', currentTheme);
-        if(myNickname) myColor = (myNickname === '운영진') ? '#ff4d4f' : getUniqueColor(myNickname);
+        if(myNickname) myColor = (myRole === 'ADMIN' || myNickname === '운영진') ? '#ff4d4f' : getUniqueColor(myNickname);
     }
 
     function getUniqueColor(nickname) {
@@ -173,28 +169,26 @@
         return `hsl(${hue}, 80%, ${lightness})`;
     }
 
-    // 🚩 실시간 웹소켓 연결 및 명령어 처리
     function connectChat(nickname, role) {
         myNickname = nickname;
-        myColor = (role === 'ADMIN') ? '#ff4d4f' : getUniqueColor(nickname);
+        myRole = role; // 🚩 역할 업데이트
+        myColor = (role === 'ADMIN' || nickname === '운영진') ? '#ff4d4f' : getUniqueColor(nickname);
 
-        socket = new WebSocket(`wss://${SERVER_URL}/ws/chat?nickname=${encodeURIComponent(nickname)}`);
+        // 🚩 서버 핸들러에 role 정보도 같이 보내줘야 백엔드가 ADMIN임을 즉시 압니다.
+        socket = new WebSocket(`wss://${SERVER_URL}/ws/chat?nickname=${encodeURIComponent(nickname)}&role=${encodeURIComponent(role)}`);
 
         socket.onmessage = (e) => {
             const data = e.data;
             const win = document.getElementById('chat-window');
 
-            // 1. 유저 명단 업데이트
             if (data.startsWith("[USER_LIST]")) {
                 document.getElementById('userDisplay').innerText = data.replace("[USER_LIST]", "🟢 실시간 접속: ");
                 return;
             }
-            // 2. 관리자 명령어: 전체 삭제
             if (data === "[CLEAR_CHAT]") {
                 win.innerHTML = "<p style='color:gray; font-size:12px; text-align:center;'>채팅창이 초기화되었습니다.</p>";
                 return;
             }
-            // 3. 관리자 명령어: 부분 삭제 (clear 숫자)
             if (data.startsWith("[CLEAR_COUNT]")) {
                 const count = parseInt(data.replace("[CLEAR_COUNT]", ""));
                 const messages = win.getElementsByTagName('div');
@@ -203,7 +197,6 @@
                 }
                 return;
             }
-            // 4. 관리자 명령어: 공지사항
             if (data.startsWith("[NOTICE]")) {
                 const bar = document.getElementById('notice-bar');
                 document.getElementById('notice-text').innerText = data.replace("[NOTICE]", "");
@@ -211,7 +204,6 @@
                 return;
             }
 
-            // 일반 채팅 메시지 출력
             const div = document.createElement('div');
             div.style.marginBottom = "8px";
             div.innerHTML = data;
@@ -221,16 +213,17 @@
         socket.onclose = () => console.log("서버 연결 종료");
     }
 
-    // 🚩 메시지 전송 및 관리자 명령어 필터링
     function sendMsg() {
         const input = document.getElementById('chatInput');
         const val = input.value.trim();
         if (!val || !socket) return;
 
-        // 관리자 전용 명령어 체크 (/clear, /clear 숫자, /공지 내용)
-        if (val.startsWith("/clear") && myNickname === "운영진") {
+        // 🚩 닉네임 또는 역할(Role)로 관리자 권한 확인
+        const isAdmin = (myNickname === "운영진" || myRole === "ADMIN");
+
+        if (val.startsWith("/clear") && isAdmin) {
             socket.send(val);
-        } else if (val.startsWith("/공지 ") && myNickname === "운영진") {
+        } else if (val.startsWith("/공지 ") && isAdmin) {
             socket.send(val);
         } else {
             const msg = `<strong style="color:${myColor}">${myNickname}</strong>: ${val}`;
@@ -239,7 +232,6 @@
         input.value = '';
     }
 
-    // 데이터 로딩 함수 (순위표)
     async function loadLeaderboard() {
         try {
             const res = await fetch(`https://${SERVER_URL}/teams?_t=${Date.now()}`);
@@ -256,12 +248,8 @@
         } catch(e) {}
     }
 
-    // 데이터 로딩 함수 (경기 결과 - 🚩 수정 시 덮어쓰기 방지 포함)
     async function loadMatches() {
-        // 🚩 현재 관리자가 입력 필드를 클릭 중(Focus)이라면 업데이트 중단 (데이터 튐 방지)
-        if (document.activeElement && document.activeElement.closest('#matchList')) {
-            return;
-        }
+        if (document.activeElement && document.activeElement.closest('#matchList')) return;
 
         try {
             const res = await fetch(`https://${SERVER_URL}/matches?_t=${Date.now()}`);
@@ -283,7 +271,6 @@
         } catch(e) {}
     }
 
-    // API 통신 함수들
     async function createTeam() {
         const nameInput = document.getElementById('newTeamName');
         const name = nameInput.value.trim();
@@ -301,17 +288,25 @@
         setTimeout(() => alert("반영 완료"), 50);
     }
 
+    // 🚩 JSON 오류 해결: 빈 응답 및 에러 처리를 강화한 checkAuth
     async function checkAuth() {
-        const res = await fetch(`https://${SERVER_URL}/api/me`);
-        if (res.ok) {
-            const user = await res.json();
-            if (user && user.nickname) {
-                document.getElementById('login-section').style.display = 'none';
-                document.getElementById('main-content').style.display = 'block';
-                if (user.role === 'ADMIN') document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
-                connectChat(user.nickname, user.role);
-                loadLeaderboard(); loadMatches();
+        try {
+            const res = await fetch(`https://${SERVER_URL}/api/me`);
+            if (res.ok) {
+                const text = await res.text();
+                if (!text) return; // 내용이 없으면 중단
+
+                const user = JSON.parse(text);
+                if (user && user.nickname) {
+                    document.getElementById('login-section').style.display = 'none';
+                    document.getElementById('main-content').style.display = 'block';
+                    if (user.role === 'ADMIN') document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+                    connectChat(user.nickname, user.role);
+                    loadLeaderboard(); loadMatches();
+                }
             }
+        } catch (e) {
+            console.log("로그인 정보 없음");
         }
     }
 
@@ -333,21 +328,15 @@
     async function resetAll() { if (confirm("데이터를 완전 초기화할까요?")) { await fetch(`https://${SERVER_URL}/reset-all`); location.reload(); } }
     async function genSchedule() { const res = await fetch(`https://${SERVER_URL}/generate-schedule`); alert(await res.text()); loadMatches(); }
 
-    // 🚩 실시간 동기화 주기 설정 (5초)
     setInterval(() => {
         if (document.getElementById('main-content').style.display === 'block') {
             loadLeaderboard();
             const adminTab = document.getElementById('admin-tab');
-            if (adminTab && adminTab.style.display === 'block') {
-                loadMatches();
-            }
+            if (adminTab && adminTab.style.display === 'block') loadMatches();
         }
     }, 5000);
 
-    // 🚩 서버 잠듦 방지 (10분마다 서버 건드리기)
-    setInterval(() => {
-        fetch(`https://${SERVER_URL}/api/me`).catch(() => {});
-    }, 600000);
+    setInterval(() => { fetch(`https://${SERVER_URL}/api/me`).catch(() => {}); }, 600000);
 
     window.onload = checkAuth;
     document.getElementById('chatInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMsg(); });
