@@ -155,7 +155,7 @@
     let socket;
     let myNickname = "";
     let myColor = "";
-    let myRole = ""; // 역할 확인용 변수 추가
+    let myRole = "GUEST";
     const SERVER_URL = "game-club-service.onrender.com";
 
     // 테마 설정
@@ -177,13 +177,14 @@
         return `hsl(${hue}, 80%, ${lightness})`;
     }
 
-    // 🚩 채팅 웹소켓 연결 (서버 신호 처리 포함)
+    // 🚩 채팅 웹소켓 연결
     function connectChat(nickname, role) {
         myNickname = nickname;
-        myRole = role;
-        myColor = (role === 'ADMIN' || nickname === '운영진') ? '#ff4d4f' : getUniqueColor(nickname);
+        myRole = role || "GUEST";
+        myColor = (myRole === 'ADMIN' || myNickname === '운영진') ? '#ff4d4f' : getUniqueColor(myNickname);
 
-        socket = new WebSocket(`wss://${SERVER_URL}/ws/chat?nickname=${encodeURIComponent(nickname)}`);
+        // 🚩 [핵심 수정] 서버 주소창에 &role=ADMIN 을 확실하게 묶어서 보냅니다!!!
+        socket = new WebSocket(`wss://${SERVER_URL}/ws/chat?nickname=${encodeURIComponent(myNickname)}&role=${encodeURIComponent(myRole)}`);
 
         socket.onmessage = (e) => {
             const data = e.data;
@@ -221,7 +222,7 @@
         socket.onclose = () => console.log("서버 연결 종료");
     }
 
-    // 🚩 명령어 필터링 로직 수정 (명령어는 태그 없이 날것으로 전송)
+    // 명령어 필터링 로직
     function sendMsg() {
         const input = document.getElementById('chatInput');
         const val = input.value.trim();
@@ -230,15 +231,15 @@
         const isAdmin = (myNickname === "운영진" || myRole === "ADMIN");
 
         if (val.startsWith("/") && isAdmin) {
-            socket.send(val); // /clear 나 /공지 등은 그대로 보냅니다!
+            socket.send(val); // /clear 나 /공지 등은 그대로 보냅니다
         } else {
             const msg = `<strong style="color:${myColor}">${myNickname}</strong>: ${val}`;
-            socket.send(msg); // 일반 채팅은 색상을 입혀 보냅니다.
+            socket.send(msg); // 일반 채팅은 색상을 입혀 보냅니다
         }
         input.value = '';
     }
 
-    // --- 기존 운영진/대시보드 기능 (그대로 유지) ---
+    // --- 운영진/대시보드 기능 ---
     async function loadLeaderboard() {
         try {
             const res = await fetch(`https://${SERVER_URL}/teams?_t=${Date.now()}`);
@@ -259,7 +260,6 @@
         if (document.activeElement && document.activeElement.closest('#matchList')) {
             return;
         }
-
         try {
             const res = await fetch(`https://${SERVER_URL}/matches?_t=${Date.now()}`);
             const matches = await res.json();
@@ -297,20 +297,22 @@
         setTimeout(() => alert("반영 완료"), 50);
     }
 
-    // 🚩 JSON 오류 해결: text() 먼저 확인하는 안전한 인증 체크
     async function checkAuth() {
         try {
             const res = await fetch(`https://${SERVER_URL}/api/me`);
             if (res.ok) {
                 const text = await res.text();
-                if (!text) return; // 내용이 비어있으면 조용히 패스
+                if (!text) return;
 
                 const user = JSON.parse(text);
                 if (user && user.nickname) {
                     document.getElementById('login-section').style.display = 'none';
                     document.getElementById('main-content').style.display = 'block';
                     if (user.role === 'ADMIN') document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+
+                    // 닉네임과 권한(role)을 같이 보냅니다.
                     connectChat(user.nickname, user.role);
+
                     loadLeaderboard();
                     loadMatches();
                 }

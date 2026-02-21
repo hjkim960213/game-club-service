@@ -18,22 +18,28 @@ public class ChatHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        // 🚩 1. 불안정한 인터셉터 대신, 웹소켓 연결 주소(URL)에서 닉네임을 직접 뽑아옵니다.
         String query = session.getUri().getQuery();
         String nickname = "익명";
-        String role = "GUEST";
+        String role = "GUEST"; // 기본값
 
-        if (query != null && query.contains("nickname=")) {
-            String rawNickname = query.split("nickname=")[1].split("&")[0];
-            nickname = URLDecoder.decode(rawNickname, StandardCharsets.UTF_8);
+        // 🚩 1. 주소창(URI)에서 닉네임과 권한(role)을 "모두" 뜯어옵니다.
+        if (query != null) {
+            String[] params = query.split("&");
+            for (String param : params) {
+                if (param.startsWith("nickname=")) {
+                    nickname = URLDecoder.decode(param.split("=")[1], StandardCharsets.UTF_8);
+                } else if (param.startsWith("role=")) {
+                    role = URLDecoder.decode(param.split("=")[1], StandardCharsets.UTF_8);
+                }
+            }
         }
 
-        // 🚩 2. 뽑아온 닉네임이 '운영진'이면 묻지도 따지지도 않고 ADMIN 권한을 줍니다.
+        // 🚩 2. 혹시 몰라서 닉네임이 '운영진'인 경우도 무조건 관리자 처리
         if ("운영진".equals(nickname)) {
             role = "ADMIN";
         }
 
-        // 🚩 3. 메시지를 칠 때 서버가 헷갈리지 않게 세션 주머니에 단단히 묶어둡니다.
+        // 🚩 3. 메시지를 칠 때 서버가 헷갈리지 않게 세션 주머니에 묶어둡니다.
         session.getAttributes().put("nickname", nickname);
         session.getAttributes().put("role", role);
 
@@ -50,7 +56,7 @@ public class ChatHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String payload = message.getPayload().trim();
 
-        // 🚩 4. 위에서 확실하게 저장한 닉네임과 권한을 꺼냅니다. (유실 방지)
+        // 🚩 4. 위에서 확실하게 저장한 닉네임과 권한을 꺼냅니다.
         String nickname = (String) session.getAttributes().get("nickname");
         String role = (String) session.getAttributes().get("role");
 
@@ -66,8 +72,8 @@ public class ChatHandler extends TextWebSocketHandler {
                 }
                 return; // 명령어는 채팅 기록에 남기지 않음
             } else {
-                // 권한 오류 시 서버가 닉네임을 어떻게 인식했는지 확인하도록 메시지 수정
-                session.sendMessage(new TextMessage("<span style='color:red;'>🚫 권한이 없습니다. (인식된 계정: " + nickname + ")</span>"));
+                // 권한 오류 시 서버가 권한을 어떻게 인식했는지 디버깅하기 쉽게 메시지 수정
+                session.sendMessage(new TextMessage("<span style='color:red;'>🚫 권한이 없습니다. (인식된 계정: " + nickname + ", 권한: " + role + ")</span>"));
                 return;
             }
         }
