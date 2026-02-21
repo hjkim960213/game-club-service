@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>어서와 | 내전 통합 포털</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -16,85 +17,94 @@
         }
 
         [data-theme='dark'] {
-            --bg-color: #212121;
-            --card-bg: #2f2f2f;
+            --bg-color: #1a1a1b;
+            --card-bg: #2d2d2d;
             --text-color: #ececec;
             --border-color: #444;
             --input-bg: #3d3d3d;
             --header-bg: #000000;
         }
 
-        body { font-family: 'Pretendard', sans-serif; padding: 30px; background-color: var(--bg-color); color: var(--text-color); margin: 0; transition: 0.3s; }
-        .container { max-width: 1300px; margin: 0 auto; background: var(--card-bg); padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); transition: 0.3s; position: relative; }
+        body { font-family: 'Pretendard', sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; transition: 0.3s; }
+        .container { max-width: 1200px; margin: 0 auto; background: var(--card-bg); min-height: 100vh; padding: 20px; box-sizing: border-box; position: relative; }
 
-        .sidebar { position: fixed; right: 25px; top: 120px; display: flex; flex-direction: column; gap: 15px; z-index: 100; }
-        .link-btn { padding: 14px; border-radius: 12px; text-decoration: none; color: white; text-align: center; font-weight: 800; font-size: 13px; transition: 0.3s; width: 80px; }
-        .youtube { background: linear-gradient(45deg, #ff0000, #cc0000); }
-        .discord { background: linear-gradient(45deg, #5865F2, #4752c4); }
-        .kakao { background: linear-gradient(45deg, #fee500, #fada0a); color: #3c1e1e !important; }
+        /* 📢 공지사항 바 스타일 */
+        #notice-bar {
+            display: none; background: #ff4d4f; color: white; padding: 12px;
+            border-radius: 12px; margin-bottom: 20px; font-weight: bold; text-align: center;
+            box-shadow: 0 4px 10px rgba(255, 77, 79, 0.3);
+        }
 
-        .dashboard-grid { display: grid; grid-template-columns: 6.5fr 3.5fr; gap: 40px; margin-top: 20px; align-items: start; }
-        @media (max-width: 1000px) { .dashboard-grid { grid-template-columns: 1fr; } }
+        /* 반응형 대시보드 그리드 */
+        .dashboard-grid { display: grid; grid-template-columns: 6.5fr 3.5fr; gap: 30px; margin-top: 20px; align-items: start; }
 
-        .header-section { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--border-color); padding-bottom: 20px; margin-bottom: 20px; }
-        .theme-toggle { background: #666; color: white; padding: 8px 15px; border-radius: 20px; font-size: 12px; cursor: pointer; border: none; transition: 0.2s; }
-        .login-theme-box { position: absolute; top: 20px; right: 20px; }
+        @media (max-width: 1000px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .sidebar { position: static !important; flex-direction: row !important; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+            .link-btn { width: auto !important; flex: 1; min-width: 70px; }
+            .container { padding: 15px; }
+            .header-section h1 { font-size: 1.3rem; }
+        }
 
-        .leaderboard-card { background: var(--card-bg); border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color); }
-        table { width: 100%; border-collapse: collapse; text-align: center; }
-        th { background-color: var(--header-bg); color: #fff; padding: 18px; }
-        td { padding: 20px; border-bottom: 1px solid var(--border-color); color: var(--text-color); }
+        .header-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; }
+
+        /* 사이드바 링크 스타일 */
+        .sidebar { position: fixed; right: 20px; top: 120px; display: flex; flex-direction: column; gap: 12px; z-index: 100; }
+        .link-btn { padding: 12px; border-radius: 10px; text-decoration: none; color: white; text-align: center; font-weight: 800; font-size: 12px; width: 65px; transition: 0.2s; }
+        .youtube { background: #ff0000; } .discord { background: #5865F2; } .kakao { background: #fee500; color: #3c1e1e !important; }
+
+        /* 순위표 테이블 디자인 */
+        .leaderboard-card { background: var(--card-bg); border-radius: 16px; overflow-x: auto; border: 1px solid var(--border-color); }
+        table { width: 100%; border-collapse: collapse; text-align: center; min-width: 500px; }
+        th { background-color: var(--header-bg); color: #fff; padding: 15px; font-size: 14px; }
+        td { padding: 15px; border-bottom: 1px solid var(--border-color); font-size: 14px; }
         .rank-1 { color: #ffbb00 !important; font-weight: 900; }
-        .pts-column { font-size: 20px; font-weight: 900; color: #007bff; }
+        .pts-column { font-size: 18px; font-weight: 900; color: #007bff; }
 
-        .badge { padding: 6px 12px; border-radius: 30px; font-size: 12px; font-weight: bold; color: white; display: inline-block; min-width: 70px; }
-        .status-finished { background: #10b981; }
-        .status-scheduled { background: #94a3b8; }
+        /* 채팅 UI 디자인 */
+        .chat-container { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 15px; padding: 15px; display: flex; flex-direction: column; height: 550px; box-sizing: border-box; }
+        #chat-window { flex: 1; overflow-y: auto; margin-bottom: 12px; padding-right: 5px; font-size: 14px; }
 
-        .admin-only { display: none; margin-top: 40px; padding: 30px; background: rgba(239, 68, 68, 0.1); border: 2px dashed #ff4d4f; border-radius: 20px; }
-        button { padding: 10px 20px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        button { padding: 10px 18px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        input { padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--input-bg); color: var(--text-color); outline: none; }
         .btn-main { background: #007bff; color: white; }
         .btn-danger { background: #ef4444; color: white; }
-        input { padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; margin-bottom: 10px; background: var(--input-bg); color: var(--text-color); }
+        .theme-toggle { background: #666; color: white; border-radius: 20px; font-size: 11px; }
 
-        .chat-container { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 15px; padding: 20px; height: 100%; display: flex; flex-direction: column; }
-        #chat-window { flex: 1; min-height: 500px; max-height: 600px; overflow-y: scroll; margin-bottom: 15px; padding-right: 10px; }
+        /* 관리자 도구 섹션 */
+        .admin-only { display: none; margin-top: 30px; padding: 20px; background: rgba(239, 68, 68, 0.05); border: 2px dashed #ff4d4f; border-radius: 20px; }
     </style>
 </head>
 <body>
 
-<div class="sidebar">
-    <a href="https://www.youtube.com/@welcomevolta" target="_blank" class="link-btn youtube">유튜브</a>
-    <a href="https://discord.gg/cPeJNTEgWU" target="_blank" class="link-btn discord">디스코드</a>
-    <a href="https://open.kakao.com/o/gO6ji4ye" target="_blank" class="link-btn kakao">카톡</a>
-</div>
-
 <div class="container">
-    <div id="login-section">
-        <div class="login-theme-box">
-            <button class="theme-toggle" onclick="toggleTheme()">🌗 테마 변경</button>
-        </div>
-        <h1 style="text-align:center;">🎮 어서와 볼타클럽 내전 포탈</h1>
-        <div style="text-align:center; margin-top:50px;">
-            <input type="text" id="nickInput" placeholder="닉네임 입력"><br>
-            <button class="btn-main" onclick="guestLogin()">게스트 입장</button>
-            <hr style="margin:30px 0; border:0; border-top:1px solid var(--border-color);">
-            <input type="text" id="adminId" placeholder="아이디"><br>
-            <input type="password" id="adminPw" placeholder="비밀번호"><br>
-            <button style="background:#333; color:white;" onclick="adminLogin()">운영진 로그인</button>
+    <div id="notice-bar">📢 <span id="notice-text"></span></div>
+
+    <div class="sidebar">
+        <a href="https://www.youtube.com/@welcomevolta" target="_blank" class="link-btn youtube">유튜브</a>
+        <a href="https://discord.gg/cPeJNTEgWU" target="_blank" class="link-btn discord">디스코드</a>
+        <a href="https://open.kakao.com/o/gO6ji4ye" target="_blank" class="link-btn kakao">카톡</a>
+    </div>
+
+    <div id="login-section" style="text-align:center; padding-top:60px;">
+        <h1>🎮 볼타클럽 내전 포탈</h1>
+        <button class="theme-toggle" onclick="toggleTheme()" style="margin-bottom:30px">🌗 테마 변경</button>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <input type="text" id="nickInput" placeholder="닉네임 입력" style="width:80%; max-width:300px;">
+            <button class="btn-main" onclick="guestLogin()" style="width:80%; max-width:300px;">게스트 입장</button>
+            <hr style="width:80%; max-width:300px; margin:20px 0; border:0; border-top:1px solid var(--border-color);">
+            <input type="text" id="adminId" placeholder="관리자 ID" style="width:80%; max-width:300px;">
+            <input type="password" id="adminPw" placeholder="비밀번호" style="width:80%; max-width:300px;">
+            <button style="background:#333; color:white; width:80%; max-width:300px;" onclick="adminLogin()">운영진 로그인</button>
         </div>
     </div>
 
     <div id="main-content" style="display:none;">
         <div class="header-section">
-            <div>
-                <h1>🏆 어서와 내전 순위표
-                    <button class="theme-toggle" onclick="toggleTheme()">🌗 테마 변경</button>
-                </h1>
-                <p id="userDisplay" style="font-weight:bold; color:#007bff; margin-top:10px;"></p>
-            </div>
-            <button class="btn-danger" onclick="logout()">로그아웃</button>
+            <h1>🏆 순위표 <button class="theme-toggle" onclick="toggleTheme()" style="padding:5px 10px">🌗</button></h1>
+            <button class="btn-danger" onclick="logout()" style="padding:8px 15px; font-size:12px">로그아웃</button>
         </div>
+        <p id="userDisplay" style="font-weight:bold; color:#007bff; font-size:13px; margin-bottom:15px;"></p>
 
         <div class="dashboard-grid">
             <div class="left-section">
@@ -106,18 +116,19 @@
                         <tbody id="leaderboardBody"></tbody>
                     </table>
                 </div>
+
                 <div id="admin-tab" class="admin-only">
-                    <h2 style="color:#ef4444; margin-top:0;">🛠️ 운영진 관리 도구</h2>
-                    <div style="background: var(--card-bg); padding: 25px; border-radius: 15px; margin-bottom: 20px; border: 1px solid var(--border-color);">
-                        <h4 style="margin-top:0">🚩 신규 팀 생성</h4>
+                    <h2 style="color:#ef4444; margin:0 0 15px 0;">🛠️ 운영진 전용 도구</h2>
+                    <div style="background: var(--card-bg); padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid var(--border-color);">
+                        <h4 style="margin-top:0">🚩 신규 팀 등록</h4>
                         <div style="display: flex; gap:10px">
-                            <input type="text" id="newTeamName" placeholder="새 팀 이름" style="flex:1; margin:0">
-                            <button class="btn-main" onclick="createTeam()" style="width: 120px;">팀 만들기</button>
+                            <input type="text" id="newTeamName" placeholder="팀 이름" style="flex:1; margin:0">
+                            <button class="btn-main" onclick="createTeam()">생성</button>
                         </div>
                     </div>
                     <div style="display:flex; gap:10px; margin-bottom:20px;">
-                        <button class="btn-main" onclick="genSchedule()">📅 대진표 생성</button>
-                        <button class="btn-danger" onclick="resetAll()">⚠️ 데이터 완전 초기화</button>
+                        <button class="btn-main" onclick="genSchedule()" style="flex:1">📅 대진표 생성</button>
+                        <button class="btn-danger" onclick="resetAll()" style="flex:1">⚠️ 전체 초기화</button>
                     </div>
                     <div id="matchList"></div>
                 </div>
@@ -125,9 +136,9 @@
 
             <div class="right-section">
                 <div class="chat-container">
-                    <h3 style="margin-top:0;">💬 실시간 채팅 <span style="font-size:12px; color:#ff4d4f;">● LIVE</span></h3>
+                    <h3 style="margin:0 0 10px 0; font-size:1.1rem;">💬 채팅 <span style="font-size:11px; color:#ff4d4f;">● LIVE</span></h3>
                     <div id="chat-window"></div>
-                    <div style="display: flex; gap: 10px;">
+                    <div style="display: flex; gap: 8px;">
                         <input type="text" id="chatInput" style="flex:1; margin:0" placeholder="메시지 입력...">
                         <button class="btn-main" onclick="sendMsg()">전송</button>
                     </div>
@@ -141,10 +152,9 @@
     let socket;
     let myNickname = "";
     let myColor = "";
-
-    // 🚩 [주소 설정] Render 서버 주소 (https:// 제외)
     const SERVER_URL = "game-club-service.onrender.com";
 
+    // 테마 설정 로직 (브라우저 저장)
     let currentTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', currentTheme);
 
@@ -159,35 +169,80 @@
         let sum = 0;
         for (let i = 0; i < nickname.length; i++) sum += nickname.charCodeAt(i);
         const hue = (sum * 137.5) % 360;
-        const lightness = (currentTheme === 'dark') ? '65%' : '45%';
+        const lightness = (currentTheme === 'dark') ? '70%' : '45%';
         return `hsl(${hue}, 80%, ${lightness})`;
     }
 
+    // 🚩 실시간 웹소켓 연결 및 명령어 처리
     function connectChat(nickname, role) {
         myNickname = nickname;
         myColor = (role === 'ADMIN') ? '#ff4d4f' : getUniqueColor(nickname);
 
-        // 🚩 보안 웹소켓(wss) 연결
         socket = new WebSocket(`wss://${SERVER_URL}/ws/chat?nickname=${encodeURIComponent(nickname)}`);
 
         socket.onmessage = (e) => {
-            if (e.data.startsWith("[USER_LIST]")) {
-                document.getElementById('userDisplay').innerText = e.data.replace("[USER_LIST]", "🟢 실시간 ");
+            const data = e.data;
+            const win = document.getElementById('chat-window');
+
+            // 1. 유저 명단 업데이트
+            if (data.startsWith("[USER_LIST]")) {
+                document.getElementById('userDisplay').innerText = data.replace("[USER_LIST]", "🟢 실시간 접속: ");
                 return;
             }
-            const win = document.getElementById('chat-window');
+            // 2. 관리자 명령어: 전체 삭제
+            if (data === "[CLEAR_CHAT]") {
+                win.innerHTML = "<p style='color:gray; font-size:12px; text-align:center;'>채팅창이 초기화되었습니다.</p>";
+                return;
+            }
+            // 3. 관리자 명령어: 부분 삭제 (clear 숫자)
+            if (data.startsWith("[CLEAR_COUNT]")) {
+                const count = parseInt(data.replace("[CLEAR_COUNT]", ""));
+                const messages = win.getElementsByTagName('div');
+                for (let i = 0; i < count; i++) {
+                    if (messages.length > 0) win.removeChild(messages[messages.length - 1]);
+                }
+                return;
+            }
+            // 4. 관리자 명령어: 공지사항
+            if (data.startsWith("[NOTICE]")) {
+                const bar = document.getElementById('notice-bar');
+                document.getElementById('notice-text').innerText = data.replace("[NOTICE]", "");
+                bar.style.display = 'block';
+                return;
+            }
+
+            // 일반 채팅 메시지 출력
             const div = document.createElement('div');
-            div.style.marginBottom = "10px";
-            div.innerHTML = e.data;
+            div.style.marginBottom = "8px";
+            div.innerHTML = data;
             win.appendChild(div);
             win.scrollTop = win.scrollHeight;
         };
         socket.onclose = () => console.log("서버 연결 종료");
     }
 
+    // 🚩 메시지 전송 및 관리자 명령어 필터링
+    function sendMsg() {
+        const input = document.getElementById('chatInput');
+        const val = input.value.trim();
+        if (!val || !socket) return;
+
+        // 관리자 전용 명령어 체크 (/clear, /clear 숫자, /공지 내용)
+        if (val.startsWith("/clear") && myNickname === "운영진") {
+            socket.send(val);
+        } else if (val.startsWith("/공지 ") && myNickname === "운영진") {
+            socket.send(val);
+        } else {
+            const msg = `<strong style="color:${myColor}">${myNickname}</strong>: ${val}`;
+            socket.send(msg);
+        }
+        input.value = '';
+    }
+
+    // 데이터 로딩 함수 (순위표)
     async function loadLeaderboard() {
         try {
-            const res = await fetch(`https://${SERVER_URL}/teams?_t=` + new Date().getTime());
+            const res = await fetch(`https://${SERVER_URL}/teams?_t=${Date.now()}`);
             const teams = await res.json();
             const body = document.getElementById('leaderboardBody');
             body.innerHTML = teams.map((t, i) => `
@@ -198,32 +253,37 @@
                     <td class="pts-column">${t.totalPoints}</td>
                 </tr>
             `).join('');
-        } catch(e) { console.error("에러", e); }
+        } catch(e) {}
     }
 
+    // 데이터 로딩 함수 (경기 결과 - 🚩 수정 시 덮어쓰기 방지 포함)
     async function loadMatches() {
-
+        // 🚩 현재 관리자가 입력 필드를 클릭 중(Focus)이라면 업데이트 중단 (데이터 튐 방지)
         if (document.activeElement && document.activeElement.closest('#matchList')) {
             return;
         }
-        const res = await fetch(`https://${SERVER_URL}/matches?_t=${Date.now()}`);
-        const matches = await res.json();
-        const listDiv = document.getElementById('matchList');
-        listDiv.innerHTML = '<h3>🏁 경기 결과 수정</h3>';
-        matches.forEach(m => {
-            const div = document.createElement('div');
-            div.style.cssText = "padding:15px; background:var(--input-bg); margin-bottom:10px; border-radius:10px; border:1px solid var(--border-color); display:flex; align-items:center; gap:10px;";
-            div.innerHTML = `
-                <span class="badge ${m.status === 'FINISHED' ? 'status-finished' : 'status-scheduled'}">${m.status === 'FINISHED' ? '종료' : '예정'}</span>
-                <b style="flex:1">${m.homeTeamName} vs ${m.awayTeamName}</b>
-                <input type="number" id="h-${m.id}" value="${m.homeScore}" style="width:50px; margin:0; text-align:center;"> :
-                <input type="number" id="a-${m.id}" value="${m.awayScore}" style="width:50px; margin:0; text-align:center;">
-                <button onclick="updateResult('${m.id}')" style="background:#ffbb00; padding:8px 15px; color:#000;">반영</button>
-            `;
-            listDiv.appendChild(div);
-        });
+
+        try {
+            const res = await fetch(`https://${SERVER_URL}/matches?_t=${Date.now()}`);
+            const matches = await res.json();
+            const listDiv = document.getElementById('matchList');
+            listDiv.innerHTML = '<h4>🏁 경기 결과 수정</h4>';
+            matches.forEach(m => {
+                const div = document.createElement('div');
+                div.style.cssText = "padding:12px; background:var(--input-bg); margin-bottom:10px; border-radius:10px; border:1px solid var(--border-color); display:flex; align-items:center; gap:8px; font-size:13px;";
+                div.innerHTML = `
+                    <span class="badge ${m.status === 'FINISHED' ? 'status-finished' : 'status-scheduled'}" style="font-size:11px;">${m.status === 'FINISHED' ? '종료' : '예정'}</span>
+                    <b style="flex:1">${m.homeTeamName} vs ${m.awayTeamName}</b>
+                    <input type="number" id="h-${m.id}" value="${m.homeScore}" style="width:40px; text-align:center; padding:5px;"> :
+                    <input type="number" id="a-${m.id}" value="${m.awayScore}" style="width:40px; text-align:center; padding:5px;">
+                    <button onclick="updateResult('${m.id}')" style="background:#ffbb00; padding:5px 10px; font-size:12px;">반영</button>
+                `;
+                listDiv.appendChild(div);
+            });
+        } catch(e) {}
     }
 
+    // API 통신 함수들
     async function createTeam() {
         const nameInput = document.getElementById('newTeamName');
         const name = nameInput.value.trim();
@@ -233,30 +293,12 @@
         nameInput.value = '';
     }
 
-    function sendMsg() {
-        const input = document.getElementById('chatInput');
-        if (!input.value || !socket) return;
-        const msg = `<strong style="color:${myColor}">${myNickname}</strong>: ${input.value}`;
-        socket.send(msg);
-        input.value = '';
-    }
-
     async function updateResult(id) {
-        await fetch(`https://${SERVER_URL}/update-result?matchId=${id}&homeScore=${document.getElementById(`h-${id}`).value}&awayScore=${document.getElementById(`a-${id}`).value}`);
+        const h = document.getElementById(`h-${id}`).value;
+        const a = document.getElementById(`a-${id}`).value;
+        await fetch(`https://${SERVER_URL}/update-result?matchId=${id}&homeScore=${h}&awayScore=${a}`);
         loadLeaderboard();
-        setTimeout(() => alert("결과 반영 완료!"), 50);
-    }
-
-    async function resetAll() {
-        if (!confirm("⚠️ 전체 초기화?")) return;
-        await fetch(`https://${SERVER_URL}/reset-all`);
-        location.reload();
-    }
-
-    async function genSchedule() {
-        const res = await fetch(`https://${SERVER_URL}/generate-schedule`);
-        alert(await res.text());
-        loadMatches();
+        setTimeout(() => alert("반영 완료"), 50);
     }
 
     async function checkAuth() {
@@ -275,6 +317,7 @@
 
     async function guestLogin() {
         const n = document.getElementById('nickInput').value;
+        if(!n) return alert("닉네임 입력!");
         await fetch(`https://${SERVER_URL}/api/login/guest?nickname=${encodeURIComponent(n)}`, { method: 'POST' });
         checkAuth();
     }
@@ -286,35 +329,28 @@
         if (res.ok) checkAuth(); else alert("아이디/비번 틀림");
     }
 
-    async function logout() {
-        await fetch(`https://${SERVER_URL}/api/logout`, { method: 'POST' });
-        location.href = "/";
-    }
+    function logout() { fetch(`https://${SERVER_URL}/api/logout`, {method:'POST'}).then(()=>location.reload()); }
+    async function resetAll() { if (confirm("데이터를 완전 초기화할까요?")) { await fetch(`https://${SERVER_URL}/reset-all`); location.reload(); } }
+    async function genSchedule() { const res = await fetch(`https://${SERVER_URL}/generate-schedule`); alert(await res.text()); loadMatches(); }
 
-    // index.html 최하단 부근
+    // 🚩 실시간 동기화 주기 설정 (5초)
     setInterval(() => {
         if (document.getElementById('main-content').style.display === 'block') {
             loadLeaderboard();
-
-        // 🚩 [추가] 관리자 도구가 보이는 상태라면 경기 결과 목록도 5초마다 자동 갱신
             const adminTab = document.getElementById('admin-tab');
             if (adminTab && adminTab.style.display === 'block') {
                 loadMatches();
             }
         }
-    }, 5000); // 5초마다 동기화
+    }, 5000);
+
+    // 🚩 서버 잠듦 방지 (10분마다 서버 건드리기)
+    setInterval(() => {
+        fetch(`https://${SERVER_URL}/api/me`).catch(() => {});
+    }, 600000);
+
     window.onload = checkAuth;
     document.getElementById('chatInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMsg(); });
-
-    // 🚩 서버 잠듦 방지 (Keep-alive) 로직
-    setInterval(() => {
-        // 서버의 메인 주소나 헬스체크 API를 10분마다 호출합니다.
-        fetch(`https://${SERVER_URL}/api/me`)
-            .then(() => console.log("서버를 깨우는 중..."))
-            .catch(e => console.error("깨우기 실패", e));
-    }, 600000); // 600,000ms = 10분
-
-
 </script>
 </body>
 </html>

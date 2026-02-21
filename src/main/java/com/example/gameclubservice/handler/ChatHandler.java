@@ -50,19 +50,60 @@ public class ChatHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String payload = message.getPayload();
+        String nickname = (String) session.getAttributes().get("nickname");
+        String role = (String) session.getAttributes().get("role");
 
-        // 🚩 누군가 채팅을 치면 기록(History)에 먼저 저장합니다.
+        // 1️⃣ 관리자 명령어(/clear) 처리 루틴
+        if (payload.startsWith("/clear")) {
+            // 권한 확인: 닉네임이 '운영진'이거나 역할이 'ADMIN'인 경우만 허용
+            if ("ADMIN".equals(role) || "운영진".equals(nickname)) {
+                String[] parts = payload.split(" ");
+
+                // Case A: /clear 또는 /clear all (전체 삭제)
+                if (parts.length == 1 || "all".equals(parts[1])) {
+                    chatHistory.clear(); // 서버 메모리 비우기
+                    broadcast("[CLEAR_CHAT]"); // 모든 클라이언트에게 전체 삭제 신호
+                }
+                // Case B: /clear 5 (특정 개수 삭제)
+                else {
+                    try {
+                        int count = Integer.parseInt(parts[1]);
+
+                        // 서버 기록(History)에서 실제로 제거 (뒤에서부터 삭제)
+                        int currentSize = chatHistory.size();
+                        int removeLimit = Math.min(count, currentSize);
+                        for (int i = 0; i < removeLimit; i++) {
+                            chatHistory.remove(chatHistory.size() - 1);
+                        }
+
+                        // 클라이언트들에게 "뒤에서부터 X개 지워라"고 신호 보냄
+                        broadcast("[CLEAR_COUNT]" + count);
+                    } catch (NumberFormatException e) {
+                        session.sendMessage(new TextMessage("⚠️ 숫자를 입력해주세요. (예: /clear 5)"));
+                    }
+                }
+            } else {
+                session.sendMessage(new TextMessage("🚫 삭제 권한이 없습니다."));
+            }
+            return; // 🚩 중요: 명령어는 아래의 '기록 저장' 로직으로 넘어가지 않게 종료!
+        }
+
+        // 2️⃣ 일반 채팅 처리 루틴 (명령어가 아닐 때만 실행됨)
+        // 기록 저장
         chatHistory.add(payload);
-
-        // 메모리가 터지지 않도록 최근 100개의 대화만 유지합니다.
         if (chatHistory.size() > 100) {
             chatHistory.remove(0);
         }
 
-        // 접속 중인 모든 사람에게 채팅 메시지 전달
+        // 모든 접속자에게 브로드캐스트
+        broadcast(payload);
+    }
+
+    // 헬퍼 메서드: 모든 세션에 메시지 전송 (중복 코드 방지)
+    private void broadcast(String msg) throws Exception {
         for (WebSocketSession s : sessionNames.keySet()) {
             if (s.isOpen()) {
-                s.sendMessage(new TextMessage(payload));
+                s.sendMessage(new TextMessage(msg));
             }
         }
     }
