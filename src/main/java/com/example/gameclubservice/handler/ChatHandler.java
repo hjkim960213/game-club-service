@@ -24,32 +24,18 @@ public class ChatHandler extends TextWebSocketHandler {
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         String query = session.getUri().getQuery();
         String nickname = "익명";
-        String role = "GUEST"; // 기본 권한
 
-        if (query != null) {
-            String[] params = query.split("&");
-            for (String param : params) {
-                if (param.startsWith("nickname=")) {
-                    nickname = URLDecoder.decode(param.split("=")[1], StandardCharsets.UTF_8);
-                }
-                // 🚩 주소창에 role=ADMIN이 있거나 닉네임이 운영진이면 권한 부여
-                if (param.startsWith("role=")) {
-                    role = param.split("=")[1];
-                }
-            }
+        if (query != null && query.contains("nickname=")) {
+            String rawNickname = query.split("nickname=")[1].split("&")[0];
+            nickname = URLDecoder.decode(rawNickname, StandardCharsets.UTF_8);
         }
 
-        if (nickname.equals("운영진")) {
-            role = "ADMIN";
-        }
-
-        // 🚩 [중요] 세션 어트리뷰트에 직접 정보를 넣어줘야 handleTextMessage에서 꺼내 쓸 수 있습니다.
+        // 🚩 [범인 검거 및 해결] 세션에 정보를 저장해야 나중에 꺼내 쓸 수 있습니다!
         session.getAttributes().put("nickname", nickname);
-        session.getAttributes().put("role", role);
 
         sessionNames.put(session, nickname);
 
-        // 과거 기록 전송
+        // 과거 채팅 기록 전송
         for (String msg : chatHistory) {
             if (session.isOpen()) {
                 session.sendMessage(new TextMessage(msg));
@@ -63,15 +49,16 @@ public class ChatHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String payload = message.getPayload();
 
-        // afterConnectionEstablished에서 넣어준 정보 꺼내기
+        // 🚩 이제 여기서 nickname을 꺼내면 "운영진"이 제대로 나옵니다.
         String nickname = (String) session.getAttributes().get("nickname");
-        String role = (String) session.getAttributes().get("role");
 
-        // 1️⃣ 관리자 명령어(/clear, /공지) 처리
+        // 1️⃣ 명령어 가로채기 (/clear, /공지)
         if (payload.startsWith("/clear") || payload.startsWith("/공지")) {
-            if ("ADMIN".equals(role) || "운영진".equals(nickname)) {
 
-                // --- 채팅 삭제 로직 ---
+            // 권한 체크: 닉네임이 정확히 "운영진"일 때만 허용
+            if ("운영진".equals(nickname)) {
+
+                // --- 전체/부분 삭제 로직 ---
                 if (payload.startsWith("/clear")) {
                     String[] parts = payload.split(" ");
                     if (parts.length == 1 || "all".equals(parts[1])) {
@@ -80,14 +67,12 @@ public class ChatHandler extends TextWebSocketHandler {
                     } else {
                         try {
                             int count = Integer.parseInt(parts[1]);
-                            int currentSize = chatHistory.size();
-                            int removeLimit = Math.min(count, currentSize);
-                            for (int i = 0; i < removeLimit; i++) {
+                            for (int i = 0; i < Math.min(count, chatHistory.size()); i++) {
                                 chatHistory.remove(chatHistory.size() - 1);
                             }
                             broadcast("[CLEAR_COUNT]" + count);
-                        } catch (NumberFormatException e) {
-                            session.sendMessage(new TextMessage("⚠️ 숫자를 입력해주세요. (예: /clear 5)"));
+                        } catch (Exception e) {
+                            session.sendMessage(new TextMessage("⚠️ 숫자를 입력해주세요."));
                         }
                     }
                 }
@@ -96,25 +81,23 @@ public class ChatHandler extends TextWebSocketHandler {
                     String notice = payload.replace("/공지 ", "");
                     broadcast("[NOTICE]" + notice);
                 }
+
+                return; // 🚩 명령어를 처리했으므로 일반 채팅 저장을 건너뜁니다.
             } else {
-                session.sendMessage(new TextMessage("🚫 권한이 없습니다."));
+                session.sendMessage(new TextMessage("🚫 권한이 없습니다. (현재 닉네임: " + nickname + ")"));
+                return;
             }
-            return; // 명령어는 기록에 저장하지 않고 종료
         }
 
         // 2️⃣ 일반 채팅 처리
         chatHistory.add(payload);
-        if (chatHistory.size() > 100) {
-            chatHistory.remove(0);
-        }
+        if (chatHistory.size() > 100) chatHistory.remove(0);
         broadcast(payload);
     }
 
     private void broadcast(String msg) throws Exception {
         for (WebSocketSession s : sessionNames.keySet()) {
-            if (s.isOpen()) {
-                s.sendMessage(new TextMessage(msg));
-            }
+            if (s.isOpen()) s.sendMessage(new TextMessage(msg));
         }
     }
 
@@ -126,10 +109,7 @@ public class ChatHandler extends TextWebSocketHandler {
 
     private void broadcastUserList() throws Exception {
         StringJoiner joiner = new StringJoiner(", ");
-        for (String name : sessionNames.values()) {
-            joiner.add(name);
-        }
-        String listMessage = "[USER_LIST]" + sessionNames.size() + "명 접속 중: " + joiner.toString();
-        broadcast(listMessage);
+        for (String name : sessionNames.values()) joiner.add(name);
+        broadcast("[USER_LIST]" + sessionNames.size() + "명 접속 중: " + joiner.toString());
     }
 }
