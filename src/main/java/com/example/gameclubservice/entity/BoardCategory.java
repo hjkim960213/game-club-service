@@ -15,8 +15,10 @@ public class BoardCategory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name; // 탭 이름 (예: 공지사항, 플레이팁, 자유게시판)
-
-    // 💡 공지사항처럼 '운영진만 글을 쓸 수 있는 탭'인지 구분하는 스위치!
+    private String name;
     private boolean adminOnlyWrite;
+
+    // 💡 탭 순서를 기억할 변수 추가!
+    @Column(columnDefinition = "int default 0")
+    private Integer displayOrder;
 }

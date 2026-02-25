@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>볼타클럽 | 내전 전적 포탈</title>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
@@ -46,7 +47,6 @@
         .tab-btn:hover { color: white; background: rgba(255,255,255,0.05); }
         .tab-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
 
-        /* 테이블 공통 */
         table { width: 100%; border-collapse: collapse; text-align: center; }
         th { color: var(--text-muted); padding: 15px; border-bottom: 1px solid var(--border-color); font-size: 13px; letter-spacing: 1px; }
         td { padding: 18px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 15px; font-weight: 500; }
@@ -55,7 +55,6 @@
 
         .admin-only { display: none; margin-top: 30px; padding: 20px; background: rgba(239, 68, 68, 0.05); border: 2px dashed #ff4d4f; border-radius: 16px; }
 
-        /* 채팅 UI */
         .chat-container { display: flex; flex-direction: column; height: 600px; padding: 20px; }
         .chat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;}
         #chat-window { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 10px; margin-bottom: 15px;}
@@ -64,7 +63,7 @@
         .chat-input-wrapper input { padding: 12px; margin: 0; flex: 1;}
         .chat-input-wrapper button { width: 80px; padding: 12px; }
 
-        /* 멤버 카드 그리드 */
+        /* 멤버 소개 UI */
         .members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
         .member-card { background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; text-align: center; position: relative; transition: 0.3s; }
         .member-card:hover { transform: translateY(-5px); border-color: var(--primary); box-shadow: 0 5px 15px rgba(59, 130, 246, 0.2); }
@@ -73,17 +72,46 @@
         .member-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
         .btn-delete-member { position: absolute; top: 10px; right: 10px; background: var(--lose-color); color: white; border: none; border-radius: 6px; padding: 4px 8px; font-size: 11px; cursor: pointer; display: none; }
 
-        /* 게시판 UI */
+        /* 카테고리/게시판 드래그 앤 드롭 */
         .category-bar { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 10px; }
+        .cat-wrapper { position: relative; display: inline-block; cursor: grab; }
+        .cat-wrapper.sortable-ghost { opacity: 0.4; }
         .category-btn { padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: var(--text-muted); font-weight: bold; cursor: pointer; white-space: nowrap; }
         .category-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
-        .board-post-row { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.2s; }
+
+        .cat-delete-btn {
+            position: absolute; top: -5px; right: -5px; background: var(--lose-color); color: white;
+            border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center;
+            justify-content: center; cursor: pointer; border: none; padding: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .board-post-row { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.2s; align-items: center;}
         .board-post-row:hover { background: rgba(255,255,255,0.05); }
         .post-title { font-weight: bold; font-size: 1.1rem; margin-bottom: 5px; }
-        .post-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 15px; }
-
-        /* 게시글 보기 모달(가짜 모달, 영역 펼침) */
+        .post-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 15px; align-items: center;}
         .post-content-view { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; margin-top: 10px; display: none; border: 1px solid var(--border-color); font-size: 14px; line-height: 1.6;}
+
+        /* 전적 카드 */
+        .match-card { background: rgba(0,0,0,0.2); border-radius: 12px; margin-bottom: 25px; overflow: hidden; border: 1px solid var(--border-color); }
+        .match-header { background: rgba(255,255,255,0.03); padding: 10px 20px; font-size: 13px; color: var(--text-muted); border-bottom: 1px solid var(--border-color); text-align: center; font-weight: bold;}
+        .match-teams { display: grid; grid-template-columns: 1fr 1fr; }
+        @media (max-width: 768px) { .match-teams { grid-template-columns: 1fr; } }
+
+        .team-box { padding: 20px; }
+        .team-box.win { background: linear-gradient(90deg, rgba(16, 185, 129, 0.05), transparent); border-left: 4px solid var(--win-color); }
+        .team-box.lose { background: linear-gradient(90deg, rgba(239, 68, 68, 0.05), transparent); border-left: 4px solid var(--lose-color); }
+        .team-box.draw { border-left: 4px solid var(--draw-color); }
+
+        .team-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 15px; }
+        .win .team-title { color: var(--win-color); } .lose .team-title { color: var(--lose-color); }
+
+        .player-row { display: grid; grid-template-columns: 3fr 1fr 2fr; align-items: center; padding: 8px 10px; border-radius: 6px; margin-bottom: 5px; font-size: 13px; }
+        .player-row:hover { background: rgba(255,255,255,0.05); }
+        .player-row.is-me { background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); }
+
+        .p-name { font-weight: bold; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .p-rating { color: var(--gold); font-weight: 800; text-align: center; }
+        .p-stats { color: var(--text-muted); text-align: right; display: flex; justify-content: flex-end; gap: 10px;}
     </style>
 </head>
 <body>
@@ -132,7 +160,7 @@
 
                 <div id="tab-volta" class="glass-card">
                     <div style="display: flex; gap: 10px; margin-bottom: 25px;">
-                        <input type="text" id="voltaSearchInput" placeholder="FC온라인 닉네임 검색" onkeypress="if(event.key==='Enter') searchVolta()">
+                        <input type="text" id="voltaSearchInput" placeholder="FC온라인 닉네임 검색" style="flex:1; font-size:15px; background:rgba(0,0,0,0.3); border-color:rgba(255,255,255,0.2);" onkeypress="if(event.key==='Enter') searchVolta()">
                         <button class="btn-main" style="width:100px; padding:0;" onclick="searchVolta()">검색</button>
                     </div>
                     <div id="voltaResultContainer"><div style="text-align:center; padding: 60px 0; color:var(--text-muted);"><span style="font-size:3rem; display:block; margin-bottom:15px;">🎮</span>최근 20경기 4v4 스탯이 분석됩니다.</div></div>
@@ -155,22 +183,18 @@
                             <button class="btn-main" style="flex:1; padding:0;" onclick="addMember()">등록하기</button>
                         </div>
                     </div>
-
                     <div id="membersGrid" class="members-grid"></div>
                 </div>
 
                 <div id="tab-board" class="glass-card" style="display:none;">
-
-                    <div class="category-bar" id="categoryBar">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <div class="category-bar" id="categoryBar" style="flex:1; margin-bottom:0;"></div>
+                        <button class="btn-main" style="width:120px; padding:10px; margin-left:15px;" onclick="toggleWriteForm()">✍️ 글쓰기</button>
                     </div>
 
-                    <div class="admin-only" style="display:flex; gap:10px; margin-bottom:20px;">
+                    <div class="admin-only" style="display:flex; gap:10px; margin-bottom:20px; background:rgba(239, 68, 68, 0.05); padding:10px; border-radius:8px;">
                         <input type="text" id="newCatName" placeholder="새로운 게시판 탭 이름" style="flex:1; padding:10px;">
                         <button class="btn-main" style="width:100px; padding:0;" onclick="addCategory()">탭 생성</button>
-                    </div>
-
-                    <div style="text-align: right; margin-bottom:15px;">
-                        <button class="btn-main" style="width:120px; padding:10px;" onclick="toggleWriteForm()">✍️ 글쓰기</button>
                     </div>
 
                     <div id="writeForm" style="display:none; background:rgba(0,0,0,0.2); padding:20px; border-radius:12px; border:1px solid var(--border-color); margin-bottom:20px;">
@@ -181,13 +205,11 @@
                             <button class="btn-main" style="width:100px; padding:10px;" onclick="addPost()">등록</button>
                         </div>
                     </div>
-
-                    <div id="postListContainer" style="border-top:1px solid var(--border-color);">
-                    </div>
+                    <div id="postListContainer" style="border-top:1px solid var(--border-color);"></div>
                 </div>
 
                 <div id="tab-leaderboard" class="glass-card" style="display:none;">
-                    <div style="overflow-x: auto;">
+                    <div class="leaderboard-wrapper">
                         <table>
                             <thead><tr><th>RANK</th><th>TEAM</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead>
                             <tbody id="leaderboardBody"></tbody>
@@ -219,42 +241,36 @@
 </div>
 
 <script>
-    // --- 공통 설정 ---
     let socket; let myNickname = ""; let myColor = ""; let myRole = "GUEST";
     const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const SERVER_URL = IS_LOCAL ? "localhost:8080" : "game-club-service.onrender.com";
     const API_BASE = IS_LOCAL ? `http://${SERVER_URL}` : `https://${SERVER_URL}`;
 
-    let currentCategoryId = null; // 현재 선택된 게시판 탭 번호
+    let currentCategoryId = null;
 
     function getUniqueColor(nickname) {
         let sum = 0; for (let i = 0; i < nickname.length; i++) sum += nickname.charCodeAt(i);
         return `hsl(${(sum * 137.5) % 360}, 80%, 75%)`;
     }
 
-    // 💡 탭 전환 업그레이드 (4개 탭)
     function switchTab(tabName) {
         ['volta', 'members', 'board', 'leaderboard'].forEach(name => {
             document.getElementById(`tab-${name}`).style.display = name === tabName ? 'block' : 'none';
             document.getElementById(`btn-tab-${name}`).classList.toggle('active', name === tabName);
         });
-
-        // 탭 열릴 때 최신 데이터 불러오기
         if(tabName === 'members') loadMembers();
-        if(tabName === 'board' && !currentCategoryId) loadCategories(); // 처음 열면 카테고리 로드
+        if(tabName === 'board' && !currentCategoryId) loadCategories();
     }
 
     // ==========================================
-    // 👥 멤버 소개 기능
+    // 👥 멤버 소개
     // ==========================================
     async function loadMembers() {
         try {
             const res = await fetch(`${API_BASE}/api/community/members`);
             const members = await res.json();
-            const grid = document.getElementById('membersGrid');
             const isAdmin = (myRole === 'ADMIN');
-
-            grid.innerHTML = members.map(m => `
+            document.getElementById('membersGrid').innerHTML = members.map(m => `
                 <div class="member-card">
                     <button class="btn-delete-member" style="display: ${isAdmin ? 'block' : 'none'};" onclick="deleteMember(${m.id})">삭제</button>
                     <div class="member-pos">${m.position}</div>
@@ -262,56 +278,67 @@
                     <div class="member-desc">"${m.description}"</div>
                 </div>
             `).join('');
-        } catch (e) { console.error("멤버 로드 실패"); }
+        } catch (e) { }
     }
-
     async function addMember() {
-        const nick = document.getElementById('newMemNick').value.trim();
-        const pos = document.getElementById('newMemPos').value.trim();
-        const desc = document.getElementById('newMemDesc').value.trim();
+        const nick = document.getElementById('newMemNick').value.trim(); const pos = document.getElementById('newMemPos').value.trim(); const desc = document.getElementById('newMemDesc').value.trim();
         if(!nick || !pos || !desc) return alert("빈칸을 모두 채워주세요!");
-
         await fetch(`${API_BASE}/api/community/members?nickname=${encodeURIComponent(nick)}&position=${encodeURIComponent(pos)}&description=${encodeURIComponent(desc)}`, {method:'POST'});
-
-        document.getElementById('newMemNick').value = ''; document.getElementById('newMemPos').value = ''; document.getElementById('newMemDesc').value = '';
-        loadMembers();
+        document.getElementById('newMemNick').value = ''; document.getElementById('newMemPos').value = ''; document.getElementById('newMemDesc').value = ''; loadMembers();
     }
-
     async function deleteMember(id) {
-        if(confirm("정말 이 멤버를 삭제할까요?")) {
-            await fetch(`${API_BASE}/api/community/members/${id}`, {method:'DELETE'});
-            loadMembers();
-        }
+        if(confirm("정말 이 멤버를 삭제할까요?")) { await fetch(`${API_BASE}/api/community/members/${id}`, {method:'DELETE'}); loadMembers(); }
     }
 
     // ==========================================
-    // 📝 게시판 기능
+    // 📝 게시판 카테고리 (드래그 앤 드롭 & 삭제)
     // ==========================================
+    let sortableInstance = null;
+
     async function loadCategories() {
         try {
             const res = await fetch(`${API_BASE}/api/community/categories`);
             const categories = await res.json();
             const bar = document.getElementById('categoryBar');
+            const isAdmin = (myRole === 'ADMIN');
 
             bar.innerHTML = categories.map(c => `
-                <button class="category-btn" id="cat-btn-${c.id}" onclick="selectCategory(${c.id})">${c.name}</button>
+                <div class="cat-wrapper" data-id="${c.id}">
+                    <button class="category-btn" id="cat-btn-${c.id}" onclick="selectCategory(${c.id})">${c.name}</button>
+                    ${isAdmin ? `<button class="cat-delete-btn" onclick="deleteCategory(${c.id}, event)">✖</button>` : ''}
+                </div>
             `).join('');
 
-            // 카테고리가 있으면 첫 번째 탭 자동 선택
-            if(categories.length > 0 && !currentCategoryId) {
-                selectCategory(categories[0].id);
-            } else if (currentCategoryId) {
-                selectCategory(currentCategoryId); // 유지
+            if(categories.length > 0 && !currentCategoryId) selectCategory(categories[0].id);
+            else if (currentCategoryId) selectCategory(currentCategoryId);
+
+            if(isAdmin) {
+                if(sortableInstance) sortableInstance.destroy();
+                sortableInstance = new Sortable(bar, {
+                    animation: 150, ghostClass: 'sortable-ghost',
+                    onEnd: function () {
+                        const itemEls = bar.querySelectorAll('.cat-wrapper');
+                        const newOrderIds = Array.from(itemEls).map(el => el.getAttribute('data-id'));
+                        fetch(`${API_BASE}/api/community/categories/reorder`, {
+                            method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(newOrderIds)
+                        });
+                    }
+                });
             }
-        } catch (e) { console.error("카테고리 로드 실패"); }
+        } catch (e) { }
     }
 
     async function addCategory() {
-        const name = document.getElementById('newCatName').value.trim();
-        if(!name) return;
+        const name = document.getElementById('newCatName').value.trim(); if(!name) return;
         await fetch(`${API_BASE}/api/community/categories?name=${encodeURIComponent(name)}`, {method:'POST'});
-        document.getElementById('newCatName').value = '';
-        loadCategories();
+        document.getElementById('newCatName').value = ''; loadCategories();
+    }
+    async function deleteCategory(id, event) {
+        event.stopPropagation();
+        if(confirm("해당 탭을 삭제하시겠습니까? (안에 있는 글도 모두 삭제됩니다!)")) {
+            await fetch(`${API_BASE}/api/community/categories/${id}`, {method:'DELETE'});
+            if(currentCategoryId === id) currentCategoryId = null; loadCategories();
+        }
     }
 
     function selectCategory(id) {
@@ -319,104 +346,119 @@
         document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.getElementById(`cat-btn-${id}`);
         if(activeBtn) activeBtn.classList.add('active');
-
         loadPosts(id);
     }
 
+    // ==========================================
+    // 📝 게시글 (삭제 권한 추가)
+    // ==========================================
     async function loadPosts(categoryId) {
         try {
             const res = await fetch(`${API_BASE}/api/community/posts?categoryId=${categoryId}`);
             const posts = await res.json();
             const container = document.getElementById('postListContainer');
 
-            if(posts.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">아직 작성된 글이 없습니다. 첫 글을 남겨보세요!</div>`;
-                return;
-            }
+            if(posts.length === 0) { container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">아직 작성된 글이 없습니다. 첫 글을 남겨보세요!</div>`; return; }
 
             container.innerHTML = posts.map(p => {
                 const date = new Date(p.createdAt).toLocaleDateString();
+                const canDelete = (myRole === 'ADMIN' || myNickname === p.authorNickname);
+                const delBtnHtml = canDelete ? `<button class="btn-danger" style="padding:4px 8px; font-size:11px; width:auto;" onclick="deletePost(${p.id}, event)">삭제</button>` : '';
+
                 return `
                 <div style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                     <div class="board-post-row" onclick="document.getElementById('post-content-${p.id}').style.display = document.getElementById('post-content-${p.id}').style.display === 'block' ? 'none' : 'block'">
-                        <div>
+                        <div style="flex:1;">
                             <div class="post-title">${p.title}</div>
                             <div class="post-meta"><span>👤 ${p.authorNickname}</span><span>🕒 ${date}</span></div>
                         </div>
+                        <div>${delBtnHtml}</div>
                     </div>
-                    <div id="post-content-${p.id}" class="post-content-view">
-                        ${p.content.replace(/\n/g, '<br>')}
-                    </div>
+                    <div id="post-content-${p.id}" class="post-content-view">${p.content.replace(/\n/g, '<br>')}</div>
                 </div>
                 `;
             }).join('');
-        } catch(e) { console.error("게시글 로드 실패"); }
+        } catch(e) { }
     }
 
-    function toggleWriteForm() {
-        const form = document.getElementById('writeForm');
-        form.style.display = form.style.display === 'none' ? 'block' : 'none';
-    }
+    function toggleWriteForm() { const form = document.getElementById('writeForm'); form.style.display = form.style.display === 'none' ? 'block' : 'none'; }
 
     async function addPost() {
         if(!currentCategoryId) return alert("카테고리를 먼저 선택해주세요!");
-        const title = document.getElementById('postTitle').value.trim();
-        const content = document.getElementById('postContent').value.trim();
-
+        const title = document.getElementById('postTitle').value.trim(); const content = document.getElementById('postContent').value.trim();
         if(!title || !content) return alert("제목과 내용을 입력해주세요.");
-
         await fetch(`${API_BASE}/api/community/posts?categoryId=${currentCategoryId}&title=${encodeURIComponent(title)}&content=${encodeURIComponent(content)}&authorNickname=${encodeURIComponent(myNickname)}`, {method:'POST'});
-
-        document.getElementById('postTitle').value = ''; document.getElementById('postContent').value = '';
-        toggleWriteForm();
-        loadPosts(currentCategoryId); // 새로고침
+        document.getElementById('postTitle').value = ''; document.getElementById('postContent').value = ''; toggleWriteForm(); loadPosts(currentCategoryId);
+    }
+    async function deletePost(postId, event) {
+        event.stopPropagation();
+        if(confirm("정말 이 글을 삭제하시겠습니까?")) {
+            const res = await fetch(`${API_BASE}/api/community/posts/${postId}?nickname=${encodeURIComponent(myNickname)}&role=${encodeURIComponent(myRole)}`, {method:'DELETE'});
+            if(res.ok) { const text = await res.text(); if(text === 'forbidden') alert("권한이 없습니다!"); else loadPosts(currentCategoryId); }
+        }
     }
 
     // ==========================================
-    // 기존 볼타 검색, 내전 스탯, 채팅 로직 (그대로 유지)
+    // 💡 수정된 부분: 어드민 매치 점수판 입력칸 확대
     // ==========================================
-    async function searchVolta() { /* ... 기존과 완벽히 동일 (생략방지: 위에서 복사해옴) ... */
-        const nickname = document.getElementById('voltaSearchInput').value.trim();
-        if(!nickname) return alert("검색할 닉네임을 입력해주세요!");
-        const container = document.getElementById('voltaResultContainer');
-        container.innerHTML = '<div style="text-align:center; padding: 60px 0;"><div style="width:40px; height:40px; border:4px solid var(--primary); border-top:4px solid transparent; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 15px;"></div><p style="color:var(--text-muted);">데이터 수집 중...</p></div><style>@keyframes spin{100%{transform:rotate(360deg);}}</style>';
+    async function loadMatches() {
+        if (document.activeElement && document.activeElement.closest('#matchList')) return;
+        try {
+            const res = await fetch(`${API_BASE}/matches?_t=${Date.now()}`); const matches = await res.json();
+            const listDiv = document.getElementById('matchList'); listDiv.innerHTML = '<h4 style="margin:15px 0 10px 0;">🏁 경기 결과 수정</h4>';
+            matches.forEach(m => {
+                const div = document.createElement('div');
+                div.style.cssText = "padding:15px; background:rgba(0,0,0,0.2); margin-bottom:10px; border-radius:10px; border:1px solid var(--border-color); display:flex; align-items:center; gap:10px; font-size:14px;";
+                div.innerHTML = `
+                    <span class="badge ${m.status === 'FINISHED' ? 'status-finished' : 'status-scheduled'}">${m.status === 'FINISHED' ? '종료' : '예정'}</span>
+                    <b style="flex:1">${m.homeTeamName} vs ${m.awayTeamName}</b>
+
+                    <input type="number" id="h-${m.id}" value="${m.homeScore}" style="width:65px; height:40px; font-size:18px; font-weight:bold; text-align:center; border-radius:8px;">
+                    <span style="font-weight:bold; font-size:18px;">:</span>
+                    <input type="number" id="a-${m.id}" value="${m.awayScore}" style="width:65px; height:40px; font-size:18px; font-weight:bold; text-align:center; border-radius:8px;">
+
+                    <button class="btn-main" onclick="updateResult('${m.id}')" style="width:auto; padding:10px 15px; font-size:14px; margin-left:5px;">반영</button>
+                `;
+                listDiv.appendChild(div);
+            });
+        } catch(e) {}
+    }
+
+    async function searchVolta() {
+        const nickname = document.getElementById('voltaSearchInput').value.trim(); if(!nickname) return alert("검색할 닉네임을 입력해주세요!");
+        const container = document.getElementById('voltaResultContainer'); container.innerHTML = '<div style="text-align:center; padding: 60px 0;"><div style="width:40px; height:40px; border:4px solid var(--primary); border-top:4px solid transparent; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 15px;"></div><p style="color:var(--text-muted);">넥슨 서버 통신 중... (최대 20경기)</p></div><style>@keyframes spin{100%{transform:rotate(360deg);}}</style>';
         try {
             const res = await fetch(`${API_BASE}/api/volta/recent?nickname=${encodeURIComponent(nickname)}`);
-            if (!res.ok) { container.innerHTML = `<p style="color:var(--lose-color); text-align:center; padding:40px;">❌ 기록 없음</p>`; return; }
+            if (!res.ok) { container.innerHTML = `<p style="color:var(--lose-color); text-align:center; padding:40px;">❌ 경기 기록을 찾을 수 없습니다.</p>`; return; }
             const matchDataArray = await res.json();
-            if(!matchDataArray || matchDataArray.length === 0) { container.innerHTML = `<p style="color:var(--lose-color); text-align:center; padding:40px;">❌ 스탯 없음</p>`; return; }
+            if(!matchDataArray || matchDataArray.length === 0) { container.innerHTML = `<p style="color:var(--lose-color); text-align:center; padding:40px;">❌ 스탯이 존재하지 않습니다.</p>`; return; }
             let htmlStr = "";
             matchDataArray.forEach((data, index) => {
                 const matchInfo = data.matchInfo; if(!matchInfo || matchInfo.length === 0) return;
-                let teamWin = matchInfo.filter(p => p.matchDetail && p.matchDetail.matchResult === '승');
-                let teamLoss = matchInfo.filter(p => p.matchDetail && p.matchDetail.matchResult !== '승');
+                let teamWin = matchInfo.filter(p => p.matchDetail && p.matchDetail.matchResult === '승'); let teamLoss = matchInfo.filter(p => p.matchDetail && p.matchDetail.matchResult !== '승');
                 let teamA, teamB, typeA, typeB;
-                if (teamWin.length > 0) { teamA = teamWin; teamB = teamLoss; typeA = 'win'; typeB = 'lose'; }
-                else { teamA = matchInfo.slice(0, 4); teamB = matchInfo.slice(4, 8); typeA = 'draw'; typeB = 'draw'; }
+                if (teamWin.length > 0) { teamA = teamWin; teamB = teamLoss; typeA = 'win'; typeB = 'lose'; } else { teamA = matchInfo.slice(0, 4); teamB = matchInfo.slice(4, 8); typeA = 'draw'; typeB = 'draw'; }
                 const renderRows = (players) => {
                     return players.map(info => {
-                        const s = (info.player && info.player.length > 0) ? info.player[0].status : {};
-                        const isMe = info.nickname.toLowerCase() === nickname.toLowerCase();
+                        const s = (info.player && info.player.length > 0) ? info.player[0].status : {}; const isMe = info.nickname.toLowerCase() === nickname.toLowerCase();
                         return `<div class="player-row ${isMe ? 'is-me' : ''}"><div class="p-name">${info.nickname}</div><div class="p-rating">⭐${(s.spRating||0).toFixed(1)}</div><div class="p-stats"><span title="골">⚽${s.goal||0}</span><span title="어시">👟${s.assist||0}</span><span title="태클">🛡️${s.tackle||0}</span></div></div>`;
                     }).join('');
                 };
                 htmlStr += `<div class="match-card"><div class="match-header">🏁 MATCH ${index + 1}</div><div class="match-teams"><div class="team-box ${typeA}"><div class="team-title">${typeA.toUpperCase()}</div>${renderRows(teamA)}</div><div class="team-box ${typeB}" style="border-left: 1px solid var(--border-color);"><div class="team-title">${typeB.toUpperCase()}</div>${renderRows(teamB)}</div></div></div>`;
             });
             container.innerHTML = htmlStr;
-        } catch (e) { container.innerHTML = `<p style="color:var(--lose-color); text-align:center; padding:40px;">❌ 에러 발생!</p>`; }
+        } catch (e) { container.innerHTML = `<p style="color:var(--lose-color); text-align:center; padding:40px;">❌ 통신 에러 발생!</p>`; }
     }
 
     function connectChat(nickname, role) {
-        myNickname = nickname; myRole = role || "GUEST";
-        myColor = (myRole === 'ADMIN' || myNickname === '운영진') ? '#ef4444' : getUniqueColor(myNickname);
+        myNickname = nickname; myRole = role || "GUEST"; myColor = (myRole === 'ADMIN' || myNickname === '운영진') ? '#ef4444' : getUniqueColor(myNickname);
         socket = new WebSocket(`${IS_LOCAL ? 'ws' : 'wss'}://${SERVER_URL}/ws/chat?nickname=${encodeURIComponent(myNickname)}&role=${encodeURIComponent(myRole)}`);
         socket.onmessage = (e) => {
             const data = e.data; const win = document.getElementById('chat-window');
             if (data.startsWith("[USER_LIST]")) { document.getElementById('userDisplay').innerText = data.replace("[USER_LIST]", "접속중: "); return; }
             if (data === "[CLEAR_CHAT]") { win.innerHTML = ""; return; }
             if (data.startsWith("[NOTICE]")) { document.getElementById('notice-text').innerText = data.replace("[NOTICE]", ""); document.getElementById('notice-bar').style.display = 'block'; return; }
-            const div = document.createElement('div'); div.className = 'chat-msg'; div.innerHTML = data;
-            win.appendChild(div); win.scrollTop = win.scrollHeight;
+            const div = document.createElement('div'); div.className = 'chat-msg'; div.innerHTML = data; win.appendChild(div); win.scrollTop = win.scrollHeight;
         };
     }
     function sendMsg() { const input = document.getElementById('chatInput'); const val = input.value.trim(); if (!val || !socket) return; if (val.startsWith("/") && (myNickname === "운영진" || myRole === "ADMIN")) socket.send(val); else socket.send(`<strong style="color:${myColor}">${myNickname}</strong>: ${val}`); input.value = ''; }
@@ -427,22 +469,9 @@
             document.getElementById('leaderboardBody').innerHTML = teams.map((t, i) => `<tr><td style="color:${i===0?'var(--gold)':(i===1?'#cbd5e1':(i===2?'#d97706':''))}; font-weight:800; font-size:1.1rem;">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td><td style="font-weight:bold">${t.teamName}</td><td>${t.wins}</td><td>${t.draws}</td><td>${t.losses}</td><td class="pts-column">${t.totalPoints}</td></tr>`).join('');
         } catch(e) {}
     }
-    async function loadMatches() { /* ... 생략 안 함 ... */
-        if (document.activeElement && document.activeElement.closest('#matchList')) return;
-        try {
-            const res = await fetch(`${API_BASE}/matches?_t=${Date.now()}`); const matches = await res.json();
-            const listDiv = document.getElementById('matchList'); listDiv.innerHTML = '<h4 style="margin:15px 0 10px 0;">🏁 경기 결과 수정</h4>';
-            matches.forEach(m => {
-                const div = document.createElement('div'); div.style.cssText = "padding:12px; background:rgba(0,0,0,0.2); margin-bottom:10px; border-radius:10px; border:1px solid var(--border-color); display:flex; align-items:center; gap:8px; font-size:13px;";
-                div.innerHTML = `<span class="badge ${m.status === 'FINISHED' ? 'status-finished' : 'status-scheduled'}">${m.status === 'FINISHED' ? '종료' : '예정'}</span><b style="flex:1">${m.homeTeamName} vs ${m.awayTeamName}</b><input type="number" id="h-${m.id}" value="${m.homeScore}" style="width:40px; text-align:center; padding:8px;"> : <input type="number" id="a-${m.id}" value="${m.awayScore}" style="width:40px; text-align:center; padding:8px;"><button class="btn-main" onclick="updateResult('${m.id}')" style="width:auto; padding:8px 12px; font-size:12px;">반영</button>`;
-                listDiv.appendChild(div);
-            });
-        } catch(e) {}
-    }
     async function createTeam() { const n = document.getElementById('newTeamName').value.trim(); if (!n) return; await fetch(`${API_BASE}/create-team?name=${encodeURIComponent(n)}`); loadLeaderboard(); document.getElementById('newTeamName').value = ''; }
     async function updateResult(id) { const h = document.getElementById(`h-${id}`).value; const a = document.getElementById(`a-${id}`).value; await fetch(`${API_BASE}/update-result?matchId=${id}&homeScore=${h}&awayScore=${a}`); loadLeaderboard(); setTimeout(() => alert("반영 완료"), 50); }
 
-    // 로그인 및 통합 로드
     async function checkAuth() {
         try {
             const res = await fetch(`${API_BASE}/api/me`);
@@ -450,14 +479,9 @@
                 const user = JSON.parse(await res.text());
                 if (user && user.nickname) {
                     document.getElementById('login-section').style.display = 'none'; document.getElementById('top-nav').style.display = 'flex'; document.getElementById('main-content').style.display = 'block';
-
-                    // 권한 컨트롤 핵심부 💡
                     if (user.role === 'ADMIN') document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
-                    else document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none'); // 게스트는 숨김!
-
-                    connectChat(user.nickname, user.role);
-                    loadLeaderboard();
-                    document.getElementById('voltaSearchInput').value = user.nickname;
+                    else document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+                    connectChat(user.nickname, user.role); loadLeaderboard(); document.getElementById('voltaSearchInput').value = user.nickname;
                 }
             }
         } catch (e) {}
