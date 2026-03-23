@@ -9,6 +9,10 @@ import java.util.List;
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MatchResponseDto {
+
+    // 💡 바로 여기에 추가합니다! (경기 날짜 정보를 통째로 받음)
+    private String matchDate;
+
     private List<MatchInfo> matchInfo;
 
     @Getter @Setter
@@ -23,13 +27,19 @@ public class MatchResponseDto {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class MatchDetail {
         private String matchResult;
+
+        // 💡 (참고) 아까 프론트엔드에서 무승부 찢을 때 썼던 세부 스탯들도 받아오려면 여기 있어야 합니다!
+        private Integer possession;
+        private Integer foul;
+        private Integer cornerKick;
+        private Integer OffsideCount;
     }
 
     @Getter @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Player {
-        private Integer spId;      // 💡 int -> Integer 로 변경
-        private Integer spPosition; // 💡 int -> Integer 로 변경
+        private Integer spId;
+        private Integer spPosition;
         private Status status;
     }
 
@@ -45,12 +55,11 @@ public class MatchResponseDto {
         private Integer passSuccess;
         private Integer dribbleSuccess;
 
-        // 🔥 넥슨 API 진짜 공식 이름표로 복구! 🔥
-        private Integer tackleTry;      // 태클 시도
-        private Integer tackle;         // 태클 성공 (이게 찐입니다!)
-        private Integer blockTry;       // 차단 시도
-        private Integer block;          // 차단 성공
-        private Integer intercept;      // 가로채기
+        private Integer tackleTry;
+        private Integer tackle;
+        private Integer blockTry;
+        private Integer block;
+        private Integer intercept;
 
         private Integer yellowCards;
         private Integer redCards;
