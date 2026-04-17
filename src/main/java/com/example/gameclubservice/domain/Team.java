@@ -23,6 +23,10 @@ public class Team {
     private int losses = 0; // 패
     private int totalPoints = 0; // 승점
 
+    // [추가됨] 타이브레이커 득실차를 위한 득점/실점 필드
+    private int goalsFor = 0;     // 총 득점 (GF)
+    private int goalsAgainst = 0; // 총 실점 (GA)
+
     @OneToMany(mappedBy = "team")
     private List<Profile> members = new ArrayList<>();
 }

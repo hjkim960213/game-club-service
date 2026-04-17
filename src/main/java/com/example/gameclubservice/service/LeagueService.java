@@ -15,12 +15,8 @@ public class LeagueService {
     private final TeamRepository teamRepository;
     private final MatchRepository matchRepository;
 
-    /**
-     * [추가됨] 새로운 팀을 생성합니다.
-     */
     @Transactional
     public String createNewTeam(String teamName) {
-        // 이미 존재하는 팀 이름인지 확인
         if (teamRepository.findByTeamName(teamName).isPresent()) {
             return "실패: 이미 존재하는 팀 이름입니다.";
         }
@@ -31,6 +27,9 @@ public class LeagueService {
         team.setDraws(0);
         team.setLosses(0);
         team.setTotalPoints(0);
+        // [추가됨] 초기 득실점 세팅
+        team.setGoalsFor(0);
+        team.setGoalsAgainst(0);
 
         teamRepository.save(team);
         return teamName + " 팀이 생성되었습니다.";
@@ -54,6 +53,13 @@ public class LeagueService {
         Team away = teamRepository.findByTeamName(match.getAwayTeamName())
                 .orElseThrow(() -> new RuntimeException("어웨이 팀을 찾을 수 없습니다."));
 
+        // [추가됨] 승무패 상관없이 이번 경기의 득점/실점 누적
+        home.setGoalsFor(home.getGoalsFor() + homeScore);
+        home.setGoalsAgainst(home.getGoalsAgainst() + awayScore);
+        away.setGoalsFor(away.getGoalsFor() + awayScore);
+        away.setGoalsAgainst(away.getGoalsAgainst() + homeScore);
+
+        // 승패에 따른 기록 업데이트
         if (homeScore > awayScore) {
             home.setWins(home.getWins() + 1); home.setTotalPoints(home.getTotalPoints() + 3);
             away.setLosses(away.getLosses() + 1);
@@ -75,6 +81,12 @@ public class LeagueService {
                 .orElseThrow(() -> new RuntimeException("홈 팀을 찾을 수 없습니다."));
         Team away = teamRepository.findByTeamName(match.getAwayTeamName())
                 .orElseThrow(() -> new RuntimeException("어웨이 팀을 찾을 수 없습니다."));
+
+        // [추가됨] 기존 경기 기록 롤백 시 득점/실점도 같이 차감
+        home.setGoalsFor(home.getGoalsFor() - match.getHomeScore());
+        home.setGoalsAgainst(home.getGoalsAgainst() - match.getAwayScore());
+        away.setGoalsFor(away.getGoalsFor() - match.getAwayScore());
+        away.setGoalsAgainst(away.getGoalsAgainst() - match.getHomeScore());
 
         if (match.getHomeScore() > match.getAwayScore()) {
             home.setWins(home.getWins() - 1); home.setTotalPoints(home.getTotalPoints() - 3);
@@ -108,27 +120,10 @@ public class LeagueService {
         return "대진표가 생성되었습니다.";
     }
 
-    /**
-     * 모든 경기와 팀 데이터를 완전히 삭제합니다.
-     */
     @Transactional
     public String resetAllData() {
-        // 1. 모든 경기 기록 삭제
         matchRepository.deleteAll();
-
-        // 2. 모든 팀 데이터 삭제 (전적 초기화가 아니라 아예 삭제하여 '이미 있는 팀' 오류 방지)
         teamRepository.deleteAll();
-
         return "모든 데이터가 완전히 초기화되었습니다.";
     }
-
-
-
-
-
-
-
-
-
-
 }

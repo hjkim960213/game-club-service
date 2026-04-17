@@ -21,12 +21,12 @@ public class GameClubServiceApplication {
         return args -> {
             // 관리자 계정 정보 리스트 (ID, PW, 닉네임 순서)
             // 여기에 희준님이 생각하신 6개의 계정 정보를 적으시면 됩니다!
-            createAdminIfAbsent(repository, "admin1", "90091234", "A팀장");
-            createAdminIfAbsent(repository, "admin2", "90098989", "B팀장");
-            createAdminIfAbsent(repository, "admin3", "90092929", "C팀장");
-            createAdminIfAbsent(repository, "admin4", "90099293", "D팀장");
-            createAdminIfAbsent(repository, "admin5", "90090123", "E팀장");
-            createAdminIfAbsent(repository, "admin6", "90092945", "F팀장");
+            createAdminIfAbsent(repository, "1팀장", "1111", "1팀장");
+            createAdminIfAbsent(repository, "2팀장", "2222", "2팀장");
+            createAdminIfAbsent(repository, "3팀장", "3333", "3팀장");
+            createAdminIfAbsent(repository, "4팀장", "4444", "4팀장");
+            createAdminIfAbsent(repository, "5팀장", "5555", "5팀장");
+            createAdminIfAbsent(repository, "6팀장", "6666", "6팀장");
 
             System.out.println("✅ 관리자 계정 체크 및 생성 프로세스 완료");
         };
